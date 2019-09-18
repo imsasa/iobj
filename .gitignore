@@ -1,0 +1,11 @@
+# IntelliJ project files
+.idea/
+node_modules/
+npm-debug.log.*
+dist/
+dist.zip
+src/assets/imgs/
+dist/output/
+/dist-tests/
+/.nyc_output/
+
