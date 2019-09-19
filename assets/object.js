@@ -9,22 +9,22 @@
  * @param sourceObj
  * @return {Object}
  */
-export function copyIfNotExist(destObj,sourceObj) {
+module.exports.copyIfNotExist = function (destObj, sourceObj) {
     let idx;
     destObj || (destObj = {});
     for (idx in sourceObj) {
         destObj[idx] === undefined && (destObj[idx] = sourceObj[idx])
     }
     return destObj;
-}
+};
 /**
  * 判断是给定的参数否为数组
  * @param arg
  */
 
-export function isArray(arg) {
-    return Array.isArray ? Array.isArray(arg) : Object.prototype.toString.call(arg) === "[object Array]"
-}
+// export function isArray(arg) {
+//     return Array.isArray ? Array.isArray(arg) : Object.prototype.toString.call(arg) === "[object Array]"
+// }
 
 /**
  *
@@ -32,15 +32,15 @@ export function isArray(arg) {
  * @param flag
  * @return {boolean}
  */
-export function has(obj, flag) {
+module.exports.has = function (obj, flag) {
     for (let i in obj) {
-        if (flag === obj[i])  return true;
+        if (flag === obj[i]) return true;
     }
     return false;
-}
-export function notAll(obj, flag) {
+};
+module.exports.notAll = function (obj, flag) {
     for (let i in obj) {
-        if (flag !== obj[i])  return true;
+        if (flag !== obj[i]) return true;
     }
     return false;
-}
+};

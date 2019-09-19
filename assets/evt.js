@@ -51,4 +51,4 @@ Evt.prototype={
     }
 };
 Evt.prototype.constructor=Evt;
-export default Evt;
+module.exports= Evt;

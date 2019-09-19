@@ -1,7 +1,7 @@
-import defineField   from "./field";
-import Evt           from "../assets/evt";
-import {has, notAll} from "../assets/object";
-import throttle      from "../assets/throttle"
+let defineField   = require("./field");
+let Evt           = require("../assets/evt");
+let debounce      = require("../assets/throttle").debounce;
+let {has, notAll} = require("../assets/object");
 
 /**
  *
@@ -240,7 +240,7 @@ function getFieldAlias(arg) {
  * @return {M}
  * @constructor
  */
-export default function defineModel(cfg) {
+function defineModel(cfg) {
     let fields = cfg.fields || cfg;
     /**
      *
@@ -257,7 +257,7 @@ export default function defineModel(cfg) {
         this.$isValid = true;
         this.$isMod   = false;
         Object.defineProperty(this, "$fields", {value: {}});
-        this.$validate = throttle(this.$validate, 200, true);
+        this.$validate = debounce(this.$validate, 200, {immediate:true,promise:true});
         for (let idx = 0, len = fields.length; idx < len; idx++) {
             let field,
                 fieldCls        = fields[idx],
@@ -288,7 +288,7 @@ export default function defineModel(cfg) {
         }
         this.$validation = validation;
         Object.defineProperty(this, "$modified", {value: modified});
-        let _emitValidChg = throttle(emitValidChg, 80).promiseble(false);
+        let _emitValidChg = debounce(emitValidChg, 80);
         this.$on("fieldValidChg", (fieldName, isValid) => {
             let validation        = this.$validation;
             validation[fieldName] = isValid;
@@ -300,7 +300,7 @@ export default function defineModel(cfg) {
                 _emitValidChg.clear();
             }
         });
-        let _emitModChg = throttle(emitModChg, 80, true).promiseble(false);
+        let _emitModChg = debounce(emitModChg, 80, {immediate:true});
         this.$on("fieldModChg", (fieldName, isMod) => {
             let modified        = this.$modified;
             modified[fieldName] = isMod;
@@ -323,5 +323,4 @@ export default function defineModel(cfg) {
     Object.defineProperty(_, "name", {value: cfg.name});
     return _;
 }
-
-
+module.exports= defineModel;

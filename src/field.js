@@ -1,9 +1,8 @@
-import Evt      from "../assets/evt";
-import throttle from "../assets/throttle"
+let Evt=require( "../assets/evt");
+let debounce=require( "../assets/throttle").debounce;
 
 /**
  *
- * @param initVal
  * @param initVal
  * @constructor
  */
@@ -81,17 +80,6 @@ const wrapProto  = Object.create(arrayProto);
         let $ctx=this.$ctx;
         // this.$ctx.$ref[this.$ctx.$name]=this;
         $ctx.$evt && $ctx.$emit("valChg", this,_arr_, $ctx);
-        // this.$ref && this.$ref.$emit("fieldValChg", this.$name, this,_arr_);
-        // if (this.$isA) return val;
-        // isMod=this.$isA ? wrapArr.compareArray(initVal, val) : val !== initVal;
-        // if (this.$isMod !== isMod) {
-        //     this.$isMod = !this.$isMod;
-        //     this.$emit("modChg", this.$isMod);
-        //     this.$ref && this.$ref.$emit("fieldModChg", this.$name, this.$isMod);
-        // }
-        // this.$validate();
-        // ctx.$ref && (ctx.$ref.$modified[ctx.$name] = true);
-        // return this.$ctx.$emit("valChg",this, this, ctx);
     };
 });
 
@@ -156,34 +144,6 @@ FieldProto.prototype.$on = function () {
  *
  **/
 
-// FieldProto.prototype.$reset = function (muse) {
-//     let $metaCache = this.$metaCache;
-//     if ($metaCache.$val === this.$val) return this;
-//     let isMod      = $metaCache.$isMod,
-//         isValid    = $metaCache.$isValid;
-//     let isModChg   = isMod !== this.$isMod;
-//     let isValidChg = isValid !== this.$isValid;
-//     this.$val      = $metaCache.$val === undefined ? this.$defaultVal : $metaCache.$val;
-//     this.$isMod    = isMod;
-//     this.$isValid  = isValid;
-//     let ref        = this.$ref;
-//     if (muse) {
-//         if (!ref) return this;
-//         isModChg && (ref.$modified[this.$name] = isMod);
-//         isValidChg && (ref.$validation[this.$name] = isValid);
-//         return this;
-//     } else {
-//         if (isModChg) {
-//             this.$emit("modChg", this.$isMod);
-//             this.$ref && this.$ref.$emit("fieldModChg", this.$name, this.$isMod);
-//         }
-//         if (isValidChg) {
-//             this.$emit("validChg", this.$isValid);
-//             this.$ref && this.$ref.$emit("fieldValidChg", this.$name, this.$isValid);
-//         }
-//     }
-//     return this;
-// };
 /**
  *
  * @return {FieldProto}
@@ -235,45 +195,15 @@ FieldProto.prototype.$on = function () {
         return isValid;
     };
 
-    // /**
-    //  *
-    //  * @return {Promise<{then}|*>}
-    //  */
-    // FieldProto.prototype.$validateSync = async function (muse) {
-    //     let isValid = true;
-    //     if (this.$validator) {
-    //         isValid = typeof this.$validator === "function" ? this.$validator(this.val) : this.$validator && this.$validator.test(this.$val);
-    //     }
-    //
-    //     if (isValid.then) isValid = await isValid;
-    //     _.call(this,muse,isValid);
-    //     return isValid;
-    // };
 })();
 
-// FieldProto.prototype.$validate = async function (muse) {
-//     let isValid = true;
-//     if (this.$validator) {
-//         isValid = typeof this.$validator === "function" ? this.$validator(this.val) : this.$validator && this.$validator.test(this.$val);
-//     }
-//
-//     if (isValid.then) isValid = await isValid;
-//     if (muse) {
-//         this.$ref && (this.$ref.$validation[this.$name] = isValid);
-//     } else if (isValid !== this.$isValid) {
-//         this.$isValid = isValid;
-//         this.$emit("validChg", isValid);
-//         this.$ref && this.$ref.$emit("fieldValidChg", this.$name, isValid);
-//     }
-//     return isValid;
-// };
 /**
  * generate a Field Type
  * @param conf 字段属性配置
  * @return {F}
  * @constructor
  */
-export default function defineField(conf) {
+module.exports=function(conf) {
     /**
      *
      * @param val
@@ -282,30 +212,19 @@ export default function defineField(conf) {
      */
 
     function F(val, isStrict) {
-        this.$validate = throttle(this.$validate, 200, true);
+        this.$validate = debounce(this.$validate, 200, {immediate:true,promise:true});
         this.$isMod    = false;
         if(typeof this.$defaultVal==="function")this.$defaultVal=this.$defaultVal();
         if(val===undefined &&isStrict!==true)val=this.$defaultVal;
         Object.defineProperty(this, "$val", new Destor(conf.isA ? wrapArr(val, this) : val));
         if(val!==undefined||isStrict!==false){
             isStrict?this.$isValid=true:this.$validate(val,true);
-            // if(isStrict){
-            //     this.$isValid=true;
-            //     // this.$ref && (this.$ref.$validation[this.$name] = true);
-            // }else{
-            //     this.$validate(val,true);
-            // }
         }
-        // else {
-        //     this.$ref && (this.$ref.$validation[this.$name] = undefined);
-        // }
-        // Object.defineProperty(this, "$metaCache", {enumerable: false, value: {$isMod: false}});
         Object.defineProperty(this, "$initVal", {enumerable: false, value:val});
     }
 
     if (typeof conf === "string") conf = {name: conf};
     F.prototype = new FieldProto(conf);
     Object.defineProperty(F, "name", {value: conf.name});
-    // Object.defineProperty(F, "name", {value: conf.name});
     return F;
-}
+};
