@@ -1,2 +1,2 @@
 # ivalid
-> a lib to being the model's meta data
+> a lib to build data model and help validate

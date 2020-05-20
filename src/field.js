@@ -7,21 +7,21 @@ let debounce = require("../assets/throttle").debounce;
  * @constructor
  */
 function Destor(initVal) {
-    let val  = initVal;
-    this.get = () => val;
-    this.set = function (newVal) {
-        let isMod = this.$isA ? wrapArr.isDiff(newVal, val) : val !== newVal;
-        if (!isMod) return val;
-        this.$emit("valChg", newVal, val, this);
-        this.$ref && this.$ref.$emit("fieldValChg", this.$name, newVal, val);
-        if (!this.$isA && this.$isMod !== (newVal !== initVal)) {
-            this.$isMod = !this.$isMod;
-            this.$emit("modChg", this.$isMod);
-            this.$ref && this.$ref.$emit("fieldModChg", this.$name, this.$isMod);
+    let value = initVal;
+    this.get  = () => value;
+    this.set  = function (newValue) {
+        let isMod = Array.isArray(newValue) ? wrapArr.isDiff(newValue, value) : value !== newValue;
+        if (!isMod) return value;
+        this.emit("valueChg", newValue, value, this);
+        this.ref && this.ref.emit("fieldValueChg", this.name, newValue, value);
+        if (!Array.isArray(newValue) && this.isModified !== (newValue !== initVal)) {
+            this.isModified = !this.isModified;
+            this.emit("modChg", this.isModified);
+            this.ref && this.emit("fieldModChg", this.name, this.isModified);
         }
-        val = newVal;
-        this.$isA || this.$validate(newVal);//数组另处理
-        return val;
+        value = newValue;
+        Array.isArray(value) || this.validate(newValue);//数组另处理
+        return value;
         // if(this.$isValid===undefined)this.$validate();
     };
 }
@@ -42,20 +42,21 @@ let wrapArr = (function () {
         let m             = arrayProto[method];
         wrapProto[method] = function mutator() {
             let _arr_ = [...this];
+            let $ctx  = this.$ctx;
             m.apply(this, arguments);
-            let $ctx = this.$ctx;
             // this.$ctx.$ref[this.$ctx.$name]=this;
-            $ctx.$evt && $ctx.$emit("valChg", this, _arr_, $ctx);
+            $ctx.emit("valueChg", this, _arr_, $ctx);
+            $ctx.ref && $ctx.ref.emit("fieldValueChg", $ctx.name, this);
         };
     });
     let _valChgHandler_ = function (initVal, val, ctx) {
         // let ctx=nval.$ctx;
-        ctx.$validate(val);
+        ctx.validate(val);
         let isMod = _wrapArr_.isDiff(initVal, val);
-        if (isMod === ctx.$isMod) return;
-        ctx.$isMod = isMod;
-        ctx.$emit("modChg", isMod);
-        ctx.$ref && ctx.$ref.$emit("fieldModChg", ctx.$name, isMod);
+        if (isMod === ctx.isModified) return;
+        ctx.isModified = isMod;
+        ctx.emit("modChg", isMod);
+        ctx.ref && ctx.ref.emit("fieldModChg", ctx.name, isMod);
     };
 
     // _valChgHandler_.promiseble(false);
@@ -63,13 +64,13 @@ let wrapArr = (function () {
         let _val_       = [...initVal];
         _val_.__proto__ = wrapProto;
         Object.defineProperty(_val_, "$ctx", {value: ctx});
-        ctx.$on("valChg", (newVal, preVal, ctx) => _valChgHandler_(initVal, newVal, ctx));
+        ctx.on("valueChg", (newVal, preVal, ctx) => _valChgHandler_(initVal, newVal, ctx));
         return _val_;
     }
 
     _wrapArr_.isDiff = function (a1, a2) {
         // if (a1 === a2) return false;
-        if (a1.length !== a2.length) return true;
+        if ((a1 && !a2) || (!a1 || a2) || a1.length !== a2.length) return true;
         for (let i = 0, n = a1.length; i < n; i++)
             if (!a2.includes(a1[i])) return true;
         return false;
@@ -77,99 +78,6 @@ let wrapArr = (function () {
     return _wrapArr_;
 })();
 
-/**
- *
- * @param name
- * @param alias
- * @param desc
- * @param validator
- * @param defaultVal
- * @param type
- * @param required
- * @return {FieldProto}
- * @constructor
- */
-function FieldProto({name, alias, desc, validator, defaultVal, isA, required}) {
-    this.$name       = name;
-    this.$alias      = alias;
-    this.$desc       = desc;
-    this.$validator  = validator;
-    this.$defaultVal = defaultVal;
-    this.$isA        = isA;
-    this.$isRequired = !!required;
-    return this;
-}
-
-/**
- *
- */
-FieldProto.prototype.$isField = true;
-FieldProto.prototype.$required      = function (val) {
-    return val !== undefined && val !== ""
-};
-FieldProto.prototype.$required.info = "该字段不能为空";
-/**
- *
- */
-FieldProto.prototype.$emit = function () {
-    this.$evt && this.$evt.trigger(...arguments);
-};
-/**
- *
- */
-FieldProto.prototype.$on = function () {
-    this.$evt || (this.$evt = new Evt());
-    this.$evt.subscribe(...arguments);
-};
-
-/**
- *
- * @param muse
- * @return {Field}
- *
- **/
-
-/**
- *
- * @returns {Promise<boolean>}
- */
-(function () {
-    function _(isValid, token) {
-        this.$validate.ing = undefined;
-        if (this.$validate.token > token || isValid === this.$isValid) return isValid;
-        if (this.$isValid !== undefined) {
-            this.$emit("validChg", isValid);
-            this.$ref && this.$ref.$emit("fieldValidChg", this.$name, isValid);
-        } else {
-            this.$ref && (this.$ref.$validation[this.$name] = isValid);
-        }
-        return this.$isValid = isValid;
-    }
-
-    /**
-     *
-     * @param val
-     * @param token
-     * @returns {boolean}
-     */
-    FieldProto.prototype.$validate = function (val, token) {
-        val           = val||this.$val;
-        let isValid   = undefined;
-        let validator = this.$validator;
-        let notEmpty  = this.$required(val);
-        if (notEmpty) {
-            if (!validator || val === this.$defaultVal || (this.$isA && !wrapArr.isDiff(val, this.$defaultVal))) {
-                isValid = true;
-            } else {
-                isValid = typeof validator === "function" ? this.$validator(val) : validator && this.$validator.test(val);
-            }
-        } else {
-            isValid = this.$isRequired !== true;
-        }
-        isValid = isValid.then ? isValid.then((val) => _.call(this, val, token)) : _.call(this, isValid, token);
-        return isValid;
-    };
-})();
 
 /**
  * generate a Field Type
@@ -177,34 +85,78 @@ FieldProto.prototype.$on = function () {
  * @return {F}
  * @constructor
  */
-module.exports = function (conf) {
-    /**
-     *
-     * @param initValue
-     * @param doNotUseDefaultValue
-     * @param doNotNeedValidate
-     * @constructor Field
-     */
+function __(isValid) {
+    let flag     = this.isValid !== undefined;
+    this.isValid = isValid;
+    if (flag) {
+        this.emit("validChg", isValid);
+        this.ref && this.ref.emit("fieldValidChg", this.name, isValid);
+    } else {
+        this.ref && (this.ref.validation[this.name] = isValid);
+    }
+    return this.isValid = isValid;
+}
 
-    function F(initValue, doNotUseDefaultValue, doNotNeedValidate) {
-        this.$isMod = false;
-        if (typeof this.$defaultVal === "function") this.$defaultVal = this.$defaultVal();
-        if (initValue === undefined && doNotUseDefaultValue !== true) initValue = this.$defaultVal;
-        Object.defineProperty(this, "$val", new Destor(conf.isA ? wrapArr(initValue, this) : initValue));
-        Object.defineProperty(this, "$initVal", {enumerable: false, value: initValue});
-        let $validateFn = debounce(this.$validate, 100, {immediate: true, promise: true});
-        let isValid     = doNotNeedValidate ? this.$isValid = true : this.$validate();
-        this.$validate  = function (val) {
-            if (arguments.length === 0) return this.$validate.ing || Promise.resolve(this.$isValid);
-            let token            = new Date().getTime();
-            this.$validate.token = token;
-            return this.$validate.ing = $validateFn.call(this, val, token);
-        };
-        if (this.$isValid !== isValid) this.$validate.ing = isValid;
+function FieldPrototype({name, alias, desc, validator, defaultValue, required}) {
+    this.name         = name;
+    this.alias        = alias;
+    this.desc         = desc;
+    this.validator    = validator;
+    this.defaultValue = defaultValue;
+    this.required     = !!required;
+    return this;
+}
+
+/**
+ *
+ */
+FieldPrototype.prototype.isField = true;
+
+FieldPrototype.prototype.validate = function () {
+    let val       = this.value;
+    let isValid   = undefined;
+    let validator = this.validator;
+    if (val === this.defaultValue || (Array.isArray(val) && !wrapArr.isDiff(val, this.defaultValue))) {
+        isValid = true;
+    } else if (val === undefined || val === "") {
+        isValid = !this.required;
+    } else {
+        isValid = typeof validator === "function" ? this.validator(val) : validator && this.validator.test(val);
+    }
+    isValid = isValid && isValid.then ? isValid : Promise.resolve(isValid);
+    return isValid;
+};
+FieldPrototype.prototype.on       = function () {
+    this.evt || (this.evt = new Evt());
+    this.evt.subscribe(...arguments);
+};
+
+FieldPrototype.prototype.emit = function () {
+    this.evt && this.evt.trigger(...arguments);
+};
+module.exports                = function defineField(conf) {
+    function F(value, isValid) {
+        if (value === undefined) {
+            this.required && (value = this.defaultValue);
+        }
+        if (isValid === undefined) {
+            if ((value === undefined && !this.required) || (this.defaultValue === value)) isValid = true;
+        }
+
+        Object.defineProperty(this, "value", new Destor(Array.isArray(value) ? wrapArr(value, this) : value));
+        this.isValid    = isValid;
+        this.isModified = false;
+        let validateFn  = debounce(this.validate, 100, {immediate: true, promise: true});
+        this.validate   = function () {
+            let valid = validateFn.call(this, this.value);
+            valid.then((val) => __.call(this, val), () => this.validate.ing = false);
+            return valid;
+        }
     }
 
-    if (typeof conf === "string") conf = {name: conf};
-    F.prototype = new FieldProto(conf);
+    F.prototype             = new FieldPrototype(conf);
+    F.prototype.constructor = F;
     Object.defineProperty(F, "name", {value: conf.name});
+    F.isField = true;
     return F;
 };
