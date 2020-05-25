@@ -20,7 +20,7 @@ function Destor(initVal) {
             this.ref && this.emit("fieldModChg", this.name, this.isModified);
         }
         value = newValue;
-        Array.isArray(value) || this.validate(newValue);//数组另处理
+        Array.isArray(value) || this.validate();//数组另处理
         return value;
         // if(this.$isValid===undefined)this.$validate();
     };
@@ -86,15 +86,13 @@ let wrapArr = (function () {
  * @constructor
  */
 function __(isValid) {
-    let flag     = this.isValid !== undefined;
+    let flag     = this.isValid !== isValid;
     this.isValid = isValid;
     if (flag) {
         this.emit("validChg", isValid);
         this.ref && this.ref.emit("fieldValidChg", this.name, isValid);
-    } else {
-        this.ref && (this.ref.validation[this.name] = isValid);
     }
-    return this.isValid = isValid;
+    return isValid;
 }
 
 function FieldPrototype({name, alias, desc, validator, defaultValue, required}) {
@@ -140,17 +138,28 @@ module.exports                = function defineField(conf) {
             this.required && (value = this.defaultValue);
         }
         if (isValid === undefined) {
-            if ((value === undefined && !this.required) || (this.defaultValue === value)) isValid = true;
+            //值不能为空
+            if (this.required && value === undefined) {
+                isValid = false;
+            } else {
+                if ((value === undefined && !this.required) || (this.defaultValue === value)) isValid = true;
+            }
         }
 
         Object.defineProperty(this, "value", new Destor(Array.isArray(value) ? wrapArr(value, this) : value));
         this.isValid    = isValid;
         this.isModified = false;
         let validateFn  = debounce(this.validate, 100, {immediate: true, promise: true});
-        this.validate   = function () {
-            let valid = validateFn.call(this, this.value);
-            valid.then((val) => __.call(this, val), () => this.validate.ing = false);
-            return valid;
+        let validCache;
+        this.validate   = function (flag) {
+            //flag表示可以利用上一次的验证结果；
+            if (flag === true&&validCache) return validCache.then?validCache:Promise.resolve(validCache);
+            let valid  = validateFn.call(this, this.value);
+            validCache = valid.then((val) => {
+                validCache = val;
+                return __.call(this, val);
+            });
+            return validCache;
         }
     }
 

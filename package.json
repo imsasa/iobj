@@ -1,34 +1,37 @@
 {
-  "name"           : "ivalid",
-  "version"        : "1.2.0",
-  "description"    : "数据合法性验证",
-  "main"           : "./src/index.js",
-  "scripts"        : {
-    "clean"     : "rimraf dist",
-    "gendoc"    : "jsdoc -c jsdoc.conf.json",
+  "name": "ivalid",
+  "version": "1.2.2",
+  "description": "数据合法性验证",
+  "main": "./src/index.js",
+  "scripts": {
+    "clean": "rimraf dist",
+    "gendoc": "jsdoc -c jsdoc.conf.json",
     "test:karma": "karma start --auto-watch",
-    "test:nyc"  : "cross-env NODE_ENV=test nyc mocha --ui bdd ./tests/field.js"
+    "test:nyc": "nyc mocha --ui bdd ./tests/*.js"
   },
-  "repository"     : {
+  "repository": {
     "type": "git",
-    "url" : "git+https://github.com/imsasa/ivalid.git"
+    "url": "git+https://github.com/imsasa/ivalid.git"
   },
-  "author"         : "",
-  "license"        : "ISC",
-  "bugs"           : {
+  "author": "",
+  "license": "ISC",
+  "bugs": {
     "url": "https://github.com/imsasa/ivalid/issues"
   },
-  "homepage"       : "https://github.com/imsasa/ivalid#readme",
+  "homepage": "https://github.com/imsasa/ivalid#readme",
   "devDependencies": {
-    "@babel/core"          : "^7.6.0",
-    "@babel/preset-env"    : "^7.6.0",
-    "@babel/register"      : "^7.6.0",
+    "@babel/core": "^7.6.0",
+    "@babel/preset-env": "^7.6.0",
+    "@babel/register": "^7.6.0",
     "babel-plugin-istanbul": "^5.2.0",
-    "cross-env"            : "^5.2.0",
-    "istanbul"             : "^0.4.5",
-    "jsdoc"                : "^3.6.3",
-    "mocha"                : "^4.0.1",
-    "mochawesome"          : "^4.1.0",
-    "nyc"                  : "^13.3.0"
+    "cross-env": "^5.2.0",
+    "istanbul": "^0.4.5",
+    "jsdoc": "^3.6.3",
+    "mocha": "^4.0.1",
+    "mochawesome": "^4.1.0",
+    "nyc": "^13.3.0"
+  },
+  "dependencies": {
+    "vue": "^2.6.11"
   }
 }
