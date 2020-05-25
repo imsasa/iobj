@@ -53,7 +53,8 @@ ModelPrototype.prototype.validate = function (validateAll) {
         let field = fieldData[fieldName];
         // if (field.isField && field.isValid !== undefined && !field.validate.ing) continue;
         // tmp            = field.isValid;
-        varr.push(field.validate());
+        let tmp = field.validate(true);
+        varr.push(tmp);
     }
     return Promise.all(varr).then((ret) => {
         let isValid = !notAll(ths.validation, true);
@@ -101,7 +102,14 @@ function fieldValidChgHandler(ctx) {
     );
     return function (fieldName, isValid) {
         ctx.validation[fieldName] = isValid;
-        if (isValid !== ctx.isValid) _(isValid, ctx.validation);
+        if (isValid === ctx.isValid) return;
+        if (isValid === true) {
+            _(isValid, ctx.validation)
+        } else {
+            ctx.isValid = false;
+            ctx.ref && ctx.ref.emit("fieldValidChg", ctx.constructor.name, false);
+            ctx.emit("validChg", isValid);
+        }
     }
 }
 
@@ -111,19 +119,27 @@ function fieldModChgHandler(ctx) {
             let isMod = has(modified, true);
             if (isMod === ctx.isModified) return;
             ctx.isModified = isMod;
-            if (ctx.ref) {
-                ctx.ref.modified[ctx.name] = true;
-                ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
-            }
-            ctx.emit("modChg", ctx.$isMod);
+            ctx.ref&&ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
+            // if (ctx.ref) {
+            // ctx.ref.modified[ctx.name] = true;
+            // }
+            ctx.emit("modChg", ctx.isModified);
             return isMod;
         }, 80, {promise: true}
     );
     return function (fieldName, isMod) {
         ctx.modified[fieldName] = isMod;
-        if (isMod !== ctx.isMod) {
-            fieldModChgHandler.ing = _(ctx.modified);
+        if (isMod === ctx.isModified) return;
+        if(isMod===true){
+            // if (ctx.ref) {
+            // ctx.ref.modified[ctx.name] = true;
+            // }
+            ctx.ref&&ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
+            ctx.emit("modChg", true);
+        }else{
+            _(ctx.modified)
         }
+        // if (isMod !== ctx.isModified) isMod ? ctx.isModified = true : _(ctx.modified);
     }
 }
 
@@ -164,13 +180,15 @@ function defineModel(cfg) {
             this.validation[fname] = field.isModel ? field.validation : field.isValid;
             if (isValid === undefined && !field.isValid) validateFlag = validateFlag | (field.isValid === false ? 1 : 2);
             Object.defineProperty(dataObj, fname, {
-                set: function (value) {
+                set         : function (value) {
                     if (valueChgFlag[fname]) {
                         return delete valueChgFlag[fname]
                     }
                     field.value = value;
                 },
-                get: () => field.value
+                get         : () => field.value,
+                enumerable  : true,
+                configurable: true
             });
         }
         this.fieldData = fieldData;
