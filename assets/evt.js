@@ -23,12 +23,10 @@ Evt.prototype={
      * @args {*...} 触发事件需传递的参数
      * @returns {Evt}
      */
-    trigger: function (key,args) {
+    trigger: function (key,...args) {
         let len, fns;
-        key = Array.prototype.shift.apply(arguments);
-        fns = this[key];
         for (len = fns ? fns.length : 0; len--;) {
-            fns[len].apply(undefined, arguments);
+            fns[len].apply(undefined, args);
         }
         return this;
     },

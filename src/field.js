@@ -134,8 +134,9 @@ FieldPrototype.prototype.emit = function () {
 };
 module.exports                = function defineField(conf) {
     function F(value, isValid) {
+        debugger;
         if (value === undefined) {
-            this.required && (value = this.defaultValue);
+            this.required?value = this.defaultValue:isValid=true;
         }
         if (isValid === undefined) {
             //值不能为空

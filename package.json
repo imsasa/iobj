@@ -1,13 +1,13 @@
 {
   "name": "ivalid",
-  "version": "1.2.2",
+  "version": "1.2.4",
   "description": "数据合法性验证",
   "main": "./src/index.js",
   "scripts": {
     "clean": "rimraf dist",
     "gendoc": "jsdoc -c jsdoc.conf.json",
     "test:karma": "karma start --auto-watch",
-    "test:nyc": "nyc mocha --ui bdd ./tests/*.js"
+    "test:nyc": "nyc mocha --ui bdd ./tests/model.js"
   },
   "repository": {
     "type": "git",
