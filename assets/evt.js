@@ -25,6 +25,7 @@ Evt.prototype={
      */
     trigger: function (key,...args) {
         let len, fns;
+        fns = this[key];
         for (len = fns ? fns.length : 0; len--;) {
             fns[len].apply(undefined, args);
         }
