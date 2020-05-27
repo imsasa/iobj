@@ -7,9 +7,11 @@ let debounce = require("../assets/throttle").debounce;
  * @constructor
  */
 function Destor(initVal) {
+    initVal===undefined&&(initVal="");
     let value = initVal;
     this.get  = () => value;
     this.set  = function (newValue) {
+        newValue===undefined&&(newValue="");
         let isMod = Array.isArray(newValue) ? wrapArr.isDiff(newValue, value) : value !== newValue;
         if (!isMod) return value;
         this.emit("valueChg", newValue, value, this);
@@ -17,7 +19,7 @@ function Destor(initVal) {
         if (!Array.isArray(newValue) && this.isModified !== (newValue !== initVal)) {
             this.isModified = !this.isModified;
             this.emit("modChg", this.isModified);
-            this.ref && this.emit("fieldModChg", this.name, this.isModified);
+            this.ref && this.ref.emit("fieldModChg", this.name, this.isModified);
         }
         value = newValue;
         Array.isArray(value) || this.validate();//数组另处理
@@ -134,7 +136,6 @@ FieldPrototype.prototype.emit = function () {
 };
 module.exports                = function defineField(conf) {
     function F(value, isValid) {
-        debugger;
         if (value === undefined) {
             this.required?value = this.defaultValue:isValid=true;
         }

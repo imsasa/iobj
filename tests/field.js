@@ -14,7 +14,7 @@ describe("数据验证", function () {
     });
     it("验证数据的初始值01）", function () {
         let foo = new F();
-        assert.equal(undefined, foo.value);
+        assert.equal("", foo.value);
     });
     it("验证数据的初始值02）", function () {
         let F   = new Field({

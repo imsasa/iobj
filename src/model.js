@@ -119,7 +119,7 @@ function fieldModChgHandler(ctx) {
             let isMod = has(modified, true);
             if (isMod === ctx.isModified) return;
             ctx.isModified = isMod;
-            ctx.ref&&ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
+            ctx.ref && ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
             // if (ctx.ref) {
             // ctx.ref.modified[ctx.name] = true;
             // }
@@ -130,13 +130,11 @@ function fieldModChgHandler(ctx) {
     return function (fieldName, isMod) {
         ctx.modified[fieldName] = isMod;
         if (isMod === ctx.isModified) return;
-        if(isMod===true){
-            // if (ctx.ref) {
-            // ctx.ref.modified[ctx.name] = true;
-            // }
-            ctx.ref&&ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
+        if (isMod === true) {
+            ctx.isModified = true;
             ctx.emit("modChg", true);
-        }else{
+            ctx.ref && ctx.ref.emit("fieldModChg", ctx.name, ctx.isModified);
+        } else {
             _(ctx.modified)
         }
         // if (isMod !== ctx.isModified) isMod ? ctx.isModified = true : _(ctx.modified);
