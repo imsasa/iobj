@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-ch">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>后台管理</title>
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.11/vue.min.js"></script>
+  <style>
+    a:visited {
+      color: grey;
+      text-decoration: line-through;
+    }
+  </style>
+</head>
+<body>
+<div id="app" class="ui container">
+  <form class="ui form">
+    <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="data.fname">
+    <span>{{"姓名输入"+(ins.validation.fname?"正确":"不正确")}}</span>
+    <br>
+    <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="data.fage">
+    <span>{{"年龄输入"+(ins.validation.fage?"正确":"不正确")}}</span>
+    <br>
+    <br>
+    <button type="button" :disabled="!ins.isValid">提交</button>
+    <span>{{"表单输入"+(ins.isValid?"正确":"不正确")}}</span>
+  </form>
+</div>
+<script src="../dist/www/main.js"></script>
+<script>
+  let P      = model(
+          [
+            {
+              name        : "fname",
+              alias       : "姓名",
+              defaultValue: "sasa",
+              required    : true,
+              validator   : function () {
+                return this.value.length > 3;
+              }
+            },
+            {
+              name        : "fage",
+              defaultValue: 28,
+              validator   : function (val) {
+                return parseInt(val) > 20;
+              }
+            }]
+  );
+
+  new Vue({
+    el     : '#app',
+    data   : function () {
+      let person = new P();
+      return {
+        data: person.value,
+        ins : person
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
