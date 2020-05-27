@@ -31,7 +31,9 @@
         </span>
         <br>
         <span>
-            当前表单<span style="color:red" v-if="ins.isModified">已经修改</span>
+            当前表单<span style="color:red" v-if="ins.isModified">
+            {{Object.keys(Object.fromEntries(Object.entries(ins.modified).filter((i)=>i[1]))).join(',')}}已经修改
+            </span>
             <span v-else>没有任何修改</span>
         </span>
         <br>
