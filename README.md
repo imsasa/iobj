@@ -2,7 +2,7 @@
 > 希望能帮到你
 
 
-##怎么用
+## 怎么用
 1. 定义一个model
 
     ```javascript
@@ -48,7 +48,8 @@
       //foo.value.fname的值为sasa;
     ```
    
-##自动响应数据变化
+## 自动响应数据变化
+> 完整示例查看demo
 
 ```html
   <form class="ui form">
