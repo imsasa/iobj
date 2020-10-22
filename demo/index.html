@@ -10,34 +10,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.11/vue.min.js"></script>
     <style>
         a:visited {
-            color: grey;
-            text-decoration: line-through;
+            color           : grey;
+            text-decoration : line-through;
         }
     </style>
 </head>
 <body>
 <div id="app" class="ui container">
     <form class="ui form">
-        <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="ins.value.fname">
-        <span>姓名输入{{(ins.validation.fname?"正确":"不正确")}}</span>
+        <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="person.fname">
+        <span>姓名输入{{ (ins.validation.fname ? "正确" : "不正确") }}</span>
         <br>
-        <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="ins.value.fage">
-        <span>年龄输入{{(ins.validation.fage?"正确":"不正确")}}</span>
+        <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="person.fage">
+        <span>年龄输入{{ (ins.validation.fage ? "正确" : "不正确") }}</span>
         <br>
         <br>
         <span>
-            表单录入<span  v-if="ins.isValid">正确</span>
+            表单录入<span v-if="isValid">正确</span>
             <span style="color:red" v-else>不正确</span>
         </span>
         <br>
         <span>
-            当前表单<span style="color:red" v-if="ins.isModified">
-            {{Object.keys(Object.fromEntries(Object.entries(ins.modified).filter((i)=>i[1]))).join(',')}}已经修改
-            </span>
+            当前表单<span style="color:red" v-if="ins.isModified">已经修改</span>
             <span v-else>没有任何修改</span>
         </span>
         <br>
-        <button type="button" :disabled="!ins.isValid">提交</button>
+        <button type="button" :disabled="!isValid">提交</button>
     </form>
 </div>
 <script src="../dist/www/main.js?fjdk"></script>
@@ -57,7 +55,11 @@
                 name        : "fage",
                 defaultValue: 28,
                 validator   : function (val) {
-                    return parseInt(val) > 20;
+                    return new Promise((resolve, reject) =>{
+                        setTimeout(()=>{
+                            resolve(parseInt(val) > 20);
+                        },1000);
+                    })
                 }
             }]
     );
@@ -66,11 +68,14 @@
         el  : '#app',
         data: function () {
             let person = new P();
-            window.person=person;
-            debugger;
             return {
-                data: person.value,
-                ins : person
+                person: person.value,
+                ins   : person
+            }
+        },
+        computed:{
+            isValid:function(){
+                return this.ins.isValid;
             }
         }
     });
