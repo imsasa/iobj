@@ -19,10 +19,19 @@
 <div id="app" class="ui container">
     <form class="ui form">
         <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="person.fname">
-        <span>姓名输入{{ (ins.validation.fname ? "正确" : "不正确") }}</span>
+        <span :style="{color:validation.fname?'black':'red'}">姓名输入{{ (validation.fname ? "正确" : "不正确") }}</span>
         <br>
         <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="person.fage">
-        <span>年龄输入{{ (ins.validation.fage ? "正确" : "不正确") }}</span>
+        <span>年龄输入{{ (validation.fage ? "正确" : "不正确") }}</span>
+        <br>
+        <label>性别</label>：<input autocomplete="off" type="radio" name="gen" v-model="person.fgen" value="male"> male
+        <input autocomplete="off" type="radio" name="gen" v-model="person.fgen" value="female"> fmale
+        <span>&nbsp;&nbsp;&nbsp;输入性别为{{ person.fgen }}</span>
+        <br>
+        <label>兴趣</label>：
+        <input type="checkbox" name="fxingqu" v-model="person.fxingqu" value="swimming"> 游泳
+        <input type="checkbox" name="fxingqu" v-model="person.fxingqu" value="daqiu"> 打球
+        <span>&nbsp;&nbsp;&nbsp;&nbsp;输入兴趣为{{ person.fxingqu }}</span>
         <br>
         <br>
         <span>
@@ -31,7 +40,7 @@
         </span>
         <br>
         <span>
-            当前表单<span style="color:red" v-if="ins.isModified">已经修改</span>
+            当前表单<span style="color:red" v-if="isModified">已经修改</span>
             <span v-else>没有任何修改</span>
         </span>
         <br>
@@ -55,27 +64,35 @@
                 name        : "fage",
                 defaultValue: 28,
                 validator   : function (val) {
-                    return new Promise((resolve, reject) =>{
-                        setTimeout(()=>{
-                            resolve(parseInt(val) > 20);
-                        },1000);
-                    })
+                    return new Promise((resolve, reject) => {
+                        setTimeout(() => resolve(parseInt(val) > 20), 1000);
+                    });
                 }
-            }]
+            },
+            {
+                name        : "fgen",
+                defaultValue: "male"
+            },
+            {
+                name        : "fxingqu",
+                required    : true,
+                defaultValue: ["swimming"]
+            }
+        ]
     );
 
     new Vue({
         el  : '#app',
         data: function () {
-            let person = new P();
+            let person    = new P({});
+            window.person = person;
+            person.$watch('$isValid', (val) => this.isValid = val);
+            person.$watch('$isModified', (val) => this.isModified = val);
             return {
-                person: person.value,
-                ins   : person
-            }
-        },
-        computed:{
-            isValid:function(){
-                return this.ins.isValid;
+                person    : person,
+                isValid   : person.$isValid,
+                isModified: person.$isModified,
+                validation: person.$validation
             }
         }
     });
