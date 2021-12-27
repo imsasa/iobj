@@ -1,40 +1,42 @@
 {
-  "name": "ivalid",
-  "version": "1.2.10",
-  "description": "数据合法性验证",
-  "main": "./src/index.js",
-  "scripts": {
-    "clean": "rimraf dist",
-    "gendoc": "jsdoc -c jsdoc.conf.json",
+  "name"           : "ivalid",
+  "version"        : "1.2.11",
+  "description"    : "watch object",
+  "main"           : "./src/index.js",
+  "scripts"        : {
+    "clean"     : "rimraf dist",
+    "gendoc"    : "jsdoc -c jsdoc.conf.json",
     "test:karma": "karma start --auto-watch",
-    "test:nyc": "nyc mocha --ui bdd ./tests/*.js",
-    "build": "webpack"
+    "test:nyc"  : "nyc mocha --ui bdd ./tests/*.js",
+    "test": "cross-env NODE_ENV=test nyc mocha  $NODE_DEBUG_OPTION --ui bdd ./tests/*.js",
+    "build"     : "webpack"
   },
-  "repository": {
+  "repository"     : {
     "type": "git",
-    "url": "git+https://github.com/imsasa/ivalid.git"
+    "url" : "git+https://github.com/imsasa/ivalid.git"
   },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
+  "author"         : "",
+  "license"        : "ISC",
+  "bugs"           : {
     "url": "https://github.com/imsasa/ivalid/issues"
   },
-  "homepage": "https://github.com/imsasa/ivalid#readme",
+  "homepage"       : "https://github.com/imsasa/ivalid#readme",
   "devDependencies": {
-    "@babel/core": "^7.6.0",
-    "@babel/preset-env": "^7.6.0",
-    "@babel/register": "^7.6.0",
+    "@babel/core"          : "^7.6.0",
+    "@babel/preset-env"    : "^7.6.0",
+    "@babel/register"      : "^7.6.0",
     "babel-plugin-istanbul": "^5.2.0",
-    "cross-env": "^5.2.0",
-    "istanbul": "^0.4.5",
-    "jsdoc": "^3.6.3",
-    "mocha": "^4.0.1",
-    "mochawesome": "^4.1.0",
-    "nyc": "^13.3.0",
-    "webpack-cli": "^3.3.11"
+    "cross-env"            : "^5.2.0",
+    "istanbul"             : "^0.4.5",
+    "jsdoc"                : "^3.6.3",
+    "mochawesome"          : "^4.1.0",
+    "nyc"                  : "^13.3.0",
+    "vue"                  : "^2.6.10",
+    "webpack"              : "^4.43.0",
+    "webpack-cli"          : "^3.3.11"
   },
-  "dependencies": {
-    "vue": "^2.6.11",
+  "dependencies"   : {
+    "vue"    : "^2.6.11",
     "webpack": "^4.43.0"
   }
 }
