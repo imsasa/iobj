@@ -31,9 +31,9 @@
 2. 单独使用
     ```javascript
             let ins = new M();
-            ins.value.fname= "saa";
-            ins.validate().then(()=>{
-                assert.equal(ins.isValid, false);
+            ins.fname= "saa";
+            ins.$validate().then(()=>{
+                assert.equal(ins.$isValid, false);
                 done();
             });
     
@@ -42,39 +42,52 @@
     ```javascript
       let foo=new M();
       let vobj = new Vue({
-          data:foo.value
+          data:foo
       });
-      vobj.$data.fname='saaa';
+      vobj.fname='saaa';
       //foo.value.fname的值为sasa;
     ```
-   
+
 ## 自动响应数据变化
-> 完整示例查看demo
 
 ```html
-  <form class="ui form">
-         <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="ins.value.fname">
-         <span>{{"姓名输入"+(ins.validation.fname?"正确":"不正确")}}</span>
-         <br>
-         <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="ins.value.fage">
-         <span>{{"年龄输入"+(ins.validation.fage?"正确":"不正确")}}</span>
-         <br>
-         <br>
-         <button type="button" :disabled="!ins.isValid">提交</button>
-         <span>{{"表单输入"+(ins.isValid?"正确":"不正确")}}</span>
-  </form>
+ <form class="ui form">
+   <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="person.fname">
+   <span>姓名输入{{ (validation.fname ? "正确" : "不正确") }}</span>
+   <br>
+   <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="person.fage">
+   <span>年龄输入{{ (validation.fage ? "正确" : "不正确") }}</span>
+   <br>
+   <span>
+            表单录入<span v-if="isValid">正确</span>
+            <span style="color:red" v-else>不正确</span>
+        </span>
+   <br>
+   <span>
+            当前表单<span style="color:red" v-if="isModified">已经修改</span>
+            <span v-else>没有任何修改</span>
+        </span>
+   <br>
+   <button type="button" :disabled="!isValid">提交</button>
+</form>
 
 ```
   ```javascript
-     new Vue({
-       el     : '#app',
-       data   : function () {
-         let person = new P();
-         return {
-           ins : person
-         }
-       }
-     });
+//demo/index.html
+new Vue({
+   el  : '#app',
+   data: function () {
+      let person = new P();
+      person.$watch('$isValid', (val) => this.isValid = val);
+      person.$watch('$isModified', (val) => this.isModified = val);
+      return {
+         person    : person,
+         isValid   : person.$isValid,
+         isModified: person.$isModified,
+         validation: person.$validation
+      }
+   }
+});
    ```
 
 
