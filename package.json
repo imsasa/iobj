@@ -1,14 +1,14 @@
 {
   "name"           : "ivalid",
-  "version"        : "1.2.11",
+  "version"        : "1.2.12",
   "description"    : "watch object",
   "main"           : "./src/index.js",
   "scripts"        : {
     "clean"     : "rimraf dist",
     "gendoc"    : "jsdoc -c jsdoc.conf.json",
     "test:karma": "karma start --auto-watch",
-    "test:nyc"  : "nyc mocha --ui bdd ./tests/*.js",
-    "test": "cross-env NODE_ENV=test nyc mocha  $NODE_DEBUG_OPTION --ui bdd ./tests/*.js",
+    "test:nyc"  : "nyc mocha --ui bdd ./tests/model.js",
+    "test"      : "cross-env NODE_ENV=test nyc mocha  $NODE_DEBUG_OPTION --ui bdd ./tests/*.js",
     "build"     : "webpack"
   },
   "repository"     : {

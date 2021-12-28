@@ -30,25 +30,6 @@ function ModelPrototype(fieldsCfg) {
     return this;
 }
 
-
-/**
- *
- */
-// ModelPrototype.prototype.$emit = function () {
-//    this.$evt.trigger(...arguments);
-// };
-// /**
-//  *
-//  */
-// ModelPrototype.prototype.$on = function () {
-//     this.$evt.subscribe(...arguments);
-// };
-// /**
-//  *
-//  */
-// ModelPrototype.prototype.$watch = function (name, fn) {
-//     this.$evt.subscribe(...arguments);
-// };
 /**
  *
  * @param validateAll undefined,false,true
@@ -64,7 +45,7 @@ ModelPrototype.prototype.$validate = function (validateAll) {
         let tmp   = field.$validate();
         varr.push(tmp);
     }
-    return Promise.all(varr).then((ret) => ckValidationHelper(true, ths.$validation, this));
+    return Promise.allSettled(varr).then((ret) => ckValidationHelper(true, ths.$validation, this));
 };
 
 ModelPrototype.prototype.$isModel = true;
@@ -122,19 +103,14 @@ function defineModel(cfg) {
      * @private
      */
     let _       = function (data, isValid) {
-        let flag          = data ? Array.isArray(data) : data = {},
-            modified      = {},
-            validateFlag  = 0,
-            fields        = this.$fields;
-        this.$validation  = {};
-        this.$isModified  = false;
-        this.$fields      = {};
-        const evt         = new Evt();
-        this.$onEvent     = (name, fn) => evt.subscribe(name, fn);
-        this.$removeEvent = (name, fn) => evt.remove(name, fn);
-        this.$emit        = function () {
-            evt.trigger(...arguments);
-        };
+        let flag         = data ? Array.isArray(data) : data = {},
+            modified     = {},
+            validateFlag = 0,
+            fields       = this.$fields;
+        this.$validation = {};
+        this.$isModified = false;
+        this.$fields     = {};
+        const evt        = new Evt(this);
         for (let idx = 0, len = fields.length; idx < len; idx++) {
             let field,
                 fieldCls            = fields[idx],
@@ -161,9 +137,9 @@ function defineModel(cfg) {
             this.$isValid = isValid;
         }
         this.$modified = modified;
-        this.$onEvent("fieldValidChg", fieldValidChgHandler(this));
-        this.$onEvent("fieldModChg", fieldModChgHandler(this));
-        this.$onEvent("fieldValueChg", (fname, value) => {
+        this.$on("fieldValidChg", fieldValidChgHandler(this));
+        this.$on("fieldModChg", fieldModChgHandler(this));
+        this.$on("fieldValueChg", (fname, value) => {
             evt.trigger(fname, value);
         });
         this.$validate = debounce(this.$validate, 100, {immediate: true, promise: true});
