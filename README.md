@@ -3,7 +3,9 @@
 
 
 ## 怎么用
-1. 定义一个model
+0. a. 安装`npm i ivalid`;b.在浏览器中加载dist/;
+1. 
+2. 定义一个model
 
     ```javascript
       let M = modelDefine(
@@ -28,7 +30,7 @@
     
     ```
 
-2. 单独使用
+3. 单独使用
     ```javascript
             let ins = new M();
             ins.fname= "saa";
@@ -38,7 +40,7 @@
             });
     
     ```
-3. 与vue一起使用
+4. 与vue一起使用
     ```javascript
       let foo=new M();
       let vobj = new Vue({
@@ -89,6 +91,7 @@ new Vue({
    }
 });
    ```
+## Field 和 Model 
 
 
 

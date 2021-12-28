@@ -1,7 +1,8 @@
-let defineField   = require("./field");
-let Evt           = require("../assets/evt");
-let debounce      = require("../assets/throttle").debounce;
-let {has, notAll} = require("../assets/object");
+import defineField   from "./field.js";
+import Evt           from "../assets/evt.js";
+import {debounce}    from "../assets/throttle.js"
+import {has, notAll} from "../assets/object.js"
+
 
 function ckValidationHelper(isValid, validation, ctx) {
     isValid && (isValid = !notAll(validation, true));
@@ -94,7 +95,7 @@ function fieldModChgHandler(ctx) {
  * @return {M}
  * @constructor
  */
-function defineModel(cfg) {
+export default function defineModel(cfg) {
     let fields  = cfg.fields || cfg;
     /**
      *
@@ -105,11 +106,12 @@ function defineModel(cfg) {
     let _       = function (data, isValid) {
         let flag         = data ? Array.isArray(data) : data = {},
             modified     = {},
-            validateFlag = 0,
+            // validateFlag = 0,
             fields       = this.$fields;
         this.$validation = {};
         this.$isModified = false;
         this.$fields     = {};
+        this.$isValid    = isValid;
         const evt        = new Evt(this);
         for (let idx = 0, len = fields.length; idx < len; idx++) {
             let field,
@@ -121,7 +123,7 @@ function defineModel(cfg) {
             modified[fname]         = false;
             this.$fields[fname]     = field;
             this.$validation[fname] = field.$isModel ? field.$validation : field.isValid;
-            if (isValid === undefined && !field.isValid) validateFlag = validateFlag | (field.isValid === false ? 1 : 2);
+            // if (isValid === undefined && !field.isValid) validateFlag = validateFlag | (field.isValid === false ? 1 : 2);
             Object.defineProperty(this, fname, {
                 set         : function (value) {
                     field.$isModel ? Object.assign(field, value) : field.value = value;
@@ -131,11 +133,9 @@ function defineModel(cfg) {
                 configurable: true
             });
         }
-        if (isValid === undefined) {
-            this.$isValid = validateFlag ? (validateFlag & 1 ? false : undefined) : true;
-        } else {
-            this.$isValid = isValid;
-        }
+        // if (this.$isValid === undefined) {
+        //     this.$isValid = validateFlag ? (validateFlag & 1 ? false : undefined) : true;
+        // }
         this.$modified = modified;
         this.$on("fieldValidChg", fieldValidChgHandler(this));
         this.$on("fieldModChg", fieldModChgHandler(this));
@@ -151,4 +151,4 @@ function defineModel(cfg) {
     return _;
 }
 
-module.exports = defineModel;
+// module.exports = defineModel;

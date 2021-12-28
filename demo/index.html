@@ -85,9 +85,10 @@
         el  : '#app',
         data: function () {
             let person    = new P({});
+            debugger;
             window.person = person;
-            person.$watch('$isValid', (val) => this.isValid = val);
-            person.$watch('$isModified', (val) => this.isModified = val);
+            person.$on('$isValid', (val) => this.isValid = val);
+            person.$on('$isModified', (val) => this.isModified = val);
             return {
                 person    : person,
                 isValid   : person.$isValid,
