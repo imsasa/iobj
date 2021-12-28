@@ -1,3 +1,5 @@
+import {throttle} from "../assets/throttle.js";
+import Evt from "../assets/evt.js"
 function isDiff(a1, a2) {
     if (!Array.isArray(a1)) return a1 !== a2;
     if ((a1 && !a2) || (!a1 && a2) || a1.length !== a2.length) return true;
@@ -5,8 +7,6 @@ function isDiff(a1, a2) {
         if (!a2.includes(a1[i])) return true;
     return false;
 }
-let throttle = require("../assets/throttle").throttle;
-let Evt           = require("../assets/evt");
 
 function proxyArray(initVal = [], fn) {
     let arr              = [...initVal];
@@ -33,10 +33,7 @@ function ifDirtyFn(newValue, initValue, preValue,evt) {
         this.$ref && this.$ref.$emit("fieldModChg", this.name, this.isModified);
         this.$emit('isModifiedChange', this.isModified,this);
     }
-    let isValid=this.isValid;
-    Promise.resolve(this.$validate()).then(
-        ()=> this.isValid!==isValid&&this.$emit('isValidChange', this.isValid,this)
-    );
+    this.$validate()
 }
 
 
@@ -89,43 +86,41 @@ FieldPrototype.prototype.isField = true;
 const validateHelper               = function (isValid) {
     if (this.isValid !== isValid) {
         this.isValid = isValid;
+        this.$emit('isValidChange', this.isValid,this);
         this.$ref && this.$ref.$emit("fieldValidChg", this.name, isValid);
     }
-    // this.$validate.isValid = isValid;
     return isValid;
 }
 FieldPrototype.prototype.$validate = function () {
     let isValid, val = this.value;
     let validator    = this.validator;
-    if (val === this.defaultValue || (Array.isArray(val) && !isDiff(val, this.defaultValue))) {
+    if(this.required&&val===undefined){
+        isValid=false
+    }else if (val === this.defaultValue || (Array.isArray(val) && !isDiff(val, this.defaultValue))) {
         isValid = true;
     } else if (val === undefined || val === "") {
         isValid = !this.required;
     } else {
-        isValid = typeof validator === "function" ? this.validator(val) : validator && this.validator.test(val);
+        isValid = typeof validator === "function" ? this.validator(val) : (validator && this.validator.test(val));
     }
-    isValid = typeof isValid === "object" && isValid && isValid.then ? isValid : Promise.resolve(isValid);
-    if (isValid && isValid.then) {
-        isValid.then(i => Reflect.apply(validateHelper, this, [i]))
-    } else {
-        Reflect.apply(validateHelper, this, [isValid])
-    }
+    isValid = (isValid && isValid.then) ? isValid : Promise.resolve(isValid);
+    isValid.then(i => Reflect.apply(validateHelper, this, [i]))
     return isValid;
 };
-module.exports                     = function defineField(conf) {
+export default  function defineField(conf) {
     function F(value, isValid, ref) {
-        if (value === undefined) {
-            this.required ? value = this.defaultValue : isValid = true;
+        if (value === undefined&&this.required) {
+            value = this.defaultValue
         }
-        if (isValid === undefined) {
-            if (this.required && value === undefined) {
-                isValid = false;
-            } else {
-                isValid = !!((value === undefined && !this.required) || (this.defaultValue === value));
-            }
-        }
+        // if (isValid === undefined) {
+        //     if (this.required && value === undefined) {
+        //         isValid = false;
+        //     } else {
+        //         isValid = !!((value === undefined && !this.required) || (this.defaultValue === value));
+        //     }
+        // }
         Object.defineProperty(this, "value", new Destor(value, this));
-        this.isValid    = isValid;
+        this.isValid    = undefined;
         this.isModified = false;
         this.$ref       = ref;
         this.$validate  = throttle(this.$validate, 200, {immediate: false, promise: true});

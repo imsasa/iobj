@@ -1,3 +1,4 @@
-module.exports.field=require('./field');
-module.exports.model=require('./model');
+import model from "./model.js";
+import field from "./field.js";
+export  {field,model}
 // export model from './model';

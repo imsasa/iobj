@@ -1,14 +1,14 @@
-var assert = require("assert");
-import Field from "../src/field";
+import assert from 'assert';
+import Field  from "../src/field.js";
 // import Vue   from "vue"
 // required 默认为false
 
 
 describe("数据验证", function () {
     let F = new Field({
-        name        : "fage",
-        required    : true,
-        validator   : function () {
+        name     : "fage",
+        required : true,
+        validator: function () {
             return this.value > 3;
         }
     });
@@ -92,7 +92,7 @@ describe("监听值变化", function () {
     let F   = new Field({
         name      : "fage",
         defaultVal: 4,
-        validator :  (val)=>val > 3
+        validator : (val) => val > 3
     });
     let foo = new F();
     // foo.on('valueChg', function (value) {
@@ -159,10 +159,12 @@ describe("数组", function () {
         });
         describe("使用默认值", function () {
             let foo = new F();
-            it("数据是否正确", function () {
-                assert.equal(true, foo.isValid);
+            it("数据是否正确-01", function () {
+                assert.equal(undefined, foo.isValid);
             });
-
+            it("数据是否正确-02", function () {
+                return foo.$validate().then(()=>assert.equal(true, foo.isValid))
+            });
             it("数据是否修改", function () {
                 assert.equal(false, foo.isModified);
             });
@@ -170,7 +172,7 @@ describe("数组", function () {
         describe("使用初始值", function () {
             let foo = new F([1, 2]);
             it("数据是否正确", function () {
-                assert.equal(false, foo.isValid);
+                return foo.$validate().then(()=>assert.equal(false, foo.isValid))
             });
             it("数据是否正确", function () {
                 return foo.$validate().then((isValid) => {
@@ -200,10 +202,11 @@ describe("数组", function () {
     }
 );
 describe("异步验证", function () {
-    let F   = new Field({
+    let F     = new Field({
         name      : "farr",
         defaultVal: [1, 2, 3, 4],
         isA       : true,
+        required  : true,
         validator : function (val) {
             return new Promise(function (res) {
                 setTimeout(function () {
@@ -212,7 +215,8 @@ describe("异步验证", function () {
             })
         }
     });
-    let foo = new F([1, 2]);
+    let foo   = new F([1, 2, 3, 4]);
+    foo.value = undefined;
     it("异步验证", function () {
         return foo.$validate().then(
             (ret) => {
