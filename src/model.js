@@ -8,8 +8,8 @@ function ckValidationHelper(isValid, validation, ctx) {
     isValid && (isValid = !notAll(validation, true));
     if (isValid !== ctx.$isValid) {
         ctx.ref && (ctx.ref.$validation[ctx.name] = isValid);
-        ctx.$emit("validChg", isValid);
         ctx.ref && ctx.ref.$emit('fieldValidChg', ctx.name, isValid);
+        ctx.$emit("$isValidChg", isValid);
     }
     return ctx.$isValid = isValid;
 }
@@ -65,7 +65,7 @@ function fieldValidChgHandler(ctx) {
         } else {
             ctx.$isValid = false;
             ctx.$ref && ctx.$ref.$emit("fieldValidChg", ctx.constructor.name, false);
-            ctx.$emit("validChg", isValid);
+            ctx.$emit("$isValidChg", isValid);
         }
     }
 }
@@ -77,8 +77,8 @@ function fieldModChgHandler(ctx) {
             if (isMod === ctx.$isModified) return;
             ctx.$isModified = isMod;
             ctx.$ref && ctx.$ref.$emit("fieldModChg", ctx.name, ctx.$isModified);
-            ctx.$emit("modChg", ctx.$isModified);
-            ctx.$emit('$isModified', ctx.$isModified);
+            // ctx.$emit("modChg", ctx.$isModified);
+            ctx.$emit('$isModifiedChg', ctx.$isModified);
             return isMod;
         }, 80, {promise: true, immediate: true}
     );
@@ -92,10 +92,11 @@ function fieldModChgHandler(ctx) {
 /**
  *
  * @param cfg
+ * @param watch
  * @return {M}
  * @constructor
  */
-export default function defineModel(cfg) {
+export default function defineModel(cfg,watch) {
     let fields  = cfg.fields || cfg;
     /**
      *
@@ -103,27 +104,26 @@ export default function defineModel(cfg) {
      * @param isValid
      * @private
      */
-    let _       = function (data, isValid) {
+    watch||(watch=cfg.watch);
+    let _       = function (data) {
         let flag         = data ? Array.isArray(data) : data = {},
             modified     = {},
-            // validateFlag = 0,
             fields       = this.$fields;
         this.$validation = {};
         this.$isModified = false;
         this.$fields     = {};
-        this.$isValid    = isValid;
+        this.$isValid    = undefined;
         const evt        = new Evt(this);
         for (let idx = 0, len = fields.length; idx < len; idx++) {
             let field,
                 fieldCls            = fields[idx],
                 fname               = fieldCls.name,
                 initVal             = flag ? data[idx] : data[fname];
-            field                   = new fieldCls(initVal, isValid, this);
+            field                   = new fieldCls(initVal, this);
             field.idx               = idx;
             modified[fname]         = false;
             this.$fields[fname]     = field;
             this.$validation[fname] = field.$isModel ? field.$validation : field.isValid;
-            // if (isValid === undefined && !field.isValid) validateFlag = validateFlag | (field.isValid === false ? 1 : 2);
             Object.defineProperty(this, fname, {
                 set         : function (value) {
                     field.$isModel ? Object.assign(field, value) : field.value = value;
@@ -133,14 +133,14 @@ export default function defineModel(cfg) {
                 configurable: true
             });
         }
-        // if (this.$isValid === undefined) {
-        //     this.$isValid = validateFlag ? (validateFlag & 1 ? false : undefined) : true;
-        // }
         this.$modified = modified;
         this.$on("fieldValidChg", fieldValidChgHandler(this));
         this.$on("fieldModChg", fieldModChgHandler(this));
-        this.$on("fieldValueChg", (fname, value) => {
-            evt.trigger(fname, value);
+        this.$on("fieldValueChg", (fname, value,preValue) => {
+            if(watch&&watch[fname]){
+                Reflect.apply(watch[fname],this,[value,preValue]);
+            }
+            // evt.trigger(fname, value);
         });
         this.$validate = debounce(this.$validate, 100, {immediate: true, promise: true});
     };
