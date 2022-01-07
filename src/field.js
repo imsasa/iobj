@@ -1,4 +1,6 @@
 import {throttle} from "../assets/throttle.js";
+import {clear}    from "@babel/register/lib/cache.js";
+
 // import Evt from "../assets/evt.js"
 function isDiff(a1, a2) {
     if (!Array.isArray(a1)) return a1 !== a2;
@@ -36,6 +38,32 @@ function ifDirtyFn(newValue, initValue, preValue) {
     this.$validate();
 }
 
+let computeFn;
+let willComputed = (function () {
+    let t;
+    let set       = new Set();
+    let executeFn = function () {
+        clearTimeout(t);
+        t = setTimeout(function () {
+            for (let i of set) {
+                set.remove(i);
+                i();
+            }
+        }, 100);
+    }
+    return {
+        add(v) {
+            set.add(v);
+            executeFn();
+        },
+        remove(v) {
+            set.remove(v);
+        },
+        clear() {
+            set.clear()
+        }
+    }
+})();
 
 /**
  *
@@ -45,21 +73,35 @@ function ifDirtyFn(newValue, initValue, preValue) {
  */
 
 function Destor(initVal, ctx) {
-    let value = initVal;
-    let fn    = (newVal, preVal) => ifDirtyFn.call(ctx, newVal, initVal, preVal)
-    if (initVal && Array.isArray(initVal)) {
-        value = proxyArray(initVal, fn);
+    let value, computeSet = new Set();
+    this.get              = () => {
+        if (computeFn) {
+            computeSet.add(computeFn);
+        }
+        return value;
     }
-    if(typeof initVal==='function'){
-        this.get=()=>Reflect.apply(initVal,ctx,[]);
-    }else{
+    if (typeof initVal === 'function') {
+        let fn    = () => Reflect.apply(initVal, ctx, []);
+        computeFn = fn;
+        value     = fn();
+        this.get  = () => value;
+        computeFn = undefined;
+    } else {
+        value    = initVal;
         this.get = () => value;
+        let fn   = (newVal, preVal) => ifDirtyFn.call(ctx, newVal, initVal, preVal)
+        if (initVal && Array.isArray(initVal)) {
+            value = proxyArray(initVal, fn);
+        }
         this.set = function (newValue) {
             if (!isDiff(newValue, value)) return value;
             Array.isArray(newValue) && (newValue = proxyArray(newValue, fn));
-            let preVal=value;
-            value = newValue;
+            let preVal = value;
+            value      = newValue;
             fn(value = newValue, preVal);
+            for (let i of computeSet) {
+                willComputed.add(i);
+            }
             return value;
         };
     }
@@ -89,16 +131,16 @@ const validateHelper               = function (isValid) {
     if (this.isValid !== isValid) {
         this.isValid = isValid;
         this.$ref && this.$ref.$emit("fieldValidChg", this.name, isValid);
-        this.$emit('$isValidChange', this.isValid,this);
+        this.$emit('$isValidChange', this.isValid, this);
     }
     return isValid;
 }
 FieldPrototype.prototype.$validate = function () {
     let isValid, val = this.value;
     let validator    = this.validator;
-    if(this.required&&val===undefined){
-        isValid=false
-    }else if (val === this.defaultValue || (Array.isArray(val) && !isDiff(val, this.defaultValue))) {
+    if (this.required && val === undefined) {
+        isValid = false
+    } else if (val === this.defaultValue || (Array.isArray(val) && !isDiff(val, this.defaultValue))) {
         isValid = true;
     } else if (val === undefined || val === "") {
         isValid = !this.required;
@@ -109,9 +151,9 @@ FieldPrototype.prototype.$validate = function () {
     isValid.then(i => Reflect.apply(validateHelper, this, [i]))
     return isValid;
 };
-export default  function defineField(conf) {
+export default function defineField(conf) {
     function F(value, ref) {
-        if (value === undefined&&this.required) {
+        if (value === undefined && this.required) {
             value = this.defaultValue;
         }
         Object.defineProperty(this, "value", new Destor(value, this));
