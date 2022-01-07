@@ -87,8 +87,8 @@
             let person    = new P({});
             debugger;
             window.person = person;
-            person.$on('$isValid', (val) => this.isValid = val);
-            person.$on('$isModified', (val) => this.isModified = val);
+            person.$on('$isValidChg', (val) => this.isValid = val);
+            person.$on('$isModifiedChg', (val) => this.isModified = val);
             return {
                 person    : person,
                 isValid   : person.$isValid,
