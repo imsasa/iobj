@@ -113,7 +113,7 @@ export default function defineModel(cfg,watch) {
         this.$isModified = false;
         this.$fields     = {};
         this.$isValid    = undefined;
-        const evt        = new Evt(this);
+        new Evt(this);
         for (let idx = 0, len = fields.length; idx < len; idx++) {
             let field,
                 fieldCls            = fields[idx],
