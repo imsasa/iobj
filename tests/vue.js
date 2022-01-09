@@ -29,7 +29,7 @@ describe("配合vue使用", function () {
 
     it("未变更值，也没有调用$validate", function () {
         let foo=new M();
-        assert.equal(foo.$validation.fage, undefined);
+        assert.equal(foo.$validation.fage.isValid, undefined);
     });
     it("修改值02", function () {
         let foo=new M();

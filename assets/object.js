@@ -32,9 +32,10 @@ export function has(obj, flag) {
  * @param flag
  * @return {boolean}
  */
-export function notAll(obj, flag) {
+export function notAll(obj, flag,prop) {
     for (let i in obj) {
-        if (flag !== obj[i]) return true;
+        let tmp=obj[i];
+        if (flag !== tmp) return true;
     }
     return false;
 }

@@ -19,10 +19,10 @@
 <div id="app" class="ui container">
     <form class="ui form">
         <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="person.fname">
-        <span :style="{color:validation.fname?'black':'red'}">姓名输入{{ (validation.fname ? "正确" : "不正确") }}</span>
+        <span :style="{color:validation.fname?'black':'red'}">{{validation.fname.isValid===false ? `姓名输入不正确,${validation.fname.msg}`:""}}</span>
         <br>
         <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="person.fage">
-        <span>年龄输入{{ (validation.fage ? "正确" : "不正确") }}</span>
+        <span>年龄输入{{ (validation.fage.isValid ? "正确" : "不正确") }}</span>
         <br>
         <label>性别</label>：<input autocomplete="off" type="radio" name="gen" v-model="person.fgen" value="male"> male
         <input autocomplete="off" type="radio" name="gen" v-model="person.fgen" value="female"> fmale
@@ -35,8 +35,7 @@
         <br>
         <br>
         <span>
-            表单录入<span v-if="isValid">正确</span>
-            <span style="color:red" v-else>不正确</span>
+           <span v-if="isValid===false">表单录入不正确</span>
         </span>
         <br>
         <span>
@@ -49,7 +48,7 @@
 </div>
 <script src="../dist/www/main.js?fjdk"></script>
 <script>
-    let P = model(
+    let P = defineModel(
         [
             {
                 name        : "fname",
@@ -57,7 +56,11 @@
                 defaultValue: "sasa",
                 required    : true,
                 validator   : function () {
-                    return this.value.length > 3;
+                    let isValid=this.value.length > 3;
+                    return {
+                        isValid:isValid,
+                        msg:isValid?"":'长度不够'
+                    }
                 }
             },
             {
@@ -85,7 +88,6 @@
         el  : '#app',
         data: function () {
             let person    = new P({});
-            debugger;
             window.person = person;
             person.$on('$isValidChg', (val) => this.isValid = val);
             person.$on('$isModifiedChg', (val) => this.isModified = val);
