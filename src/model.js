@@ -1,16 +1,20 @@
 import defineField   from "./field.js";
 import Evt           from "../assets/evt.js";
 import {debounce}    from "../assets/throttle.js"
-import {has, notAll} from "../assets/object.js"
+import {has} from "../assets/object.js"
 
 
 function ckValidationHelper(isValid, validation, ctx) {
-    isValid && (isValid = !notAll(validation, true));
-    if (isValid !== ctx.$isValid) {
-        ctx.ref && (ctx.ref.$validation[ctx.name] = isValid);
-        ctx.ref && ctx.ref.$emit('fieldValidChg', ctx.name, isValid);
-        ctx.$emit("$isValidChg", isValid);
+    if(isValid){
+        for (let i in validation) {
+            let tmp=validation[i].isValid;
+            if (!tmp) isValid= tmp;
+            if(isValid===false)break;
+        }
     }
+    ctx.ref && (ctx.ref.$validation[ctx.name] = {isValid});
+    ctx.ref && ctx.ref.$emit('fieldValidChg', ctx.name, isValid);
+    ctx.$emit("$isValidChg", isValid);
     return ctx.$isValid = isValid;
 }
 
@@ -20,14 +24,14 @@ function ckValidationHelper(isValid, validation, ctx) {
  * @constructor
  */
 function ModelPrototype(fieldsCfg) {
-    let fields = [];
+    let fields = [],computeFields=[];
     for (let field of fieldsCfg) {
         if (!field.isField && !field.$isModel) {
             field = field.$isModel ? defineModel(field) : defineField(field)
         }
-        fields.push(field);
+       field.type==='compute'?computeFields.push(field):fields.push(field);
     }
-    this.$fields = fields;
+    this.$fields=fields;
     return this;
 }
 
@@ -57,16 +61,16 @@ function fieldValidChgHandler(ctx) {
             return ckValidationHelper(isValid, validation, ctx);
         }, 80, {promise: true}
     );
-    return function (fieldName, isValid) {
-        ctx.$validation[fieldName] = isValid;
-        if (isValid === ctx.$isValid) return;
-        if (isValid === true) {
-            _(isValid, ctx.$validation)
-        } else {
-            ctx.$isValid = false;
-            ctx.$ref && ctx.$ref.$emit("fieldValidChg", ctx.constructor.name, false);
-            ctx.$emit("$isValidChg", isValid);
-        }
+    return function (fieldName, isValid,msg) {
+        ctx.$validation[fieldName].isValid = isValid;
+        ctx.$validation[fieldName].msg = msg;
+        if (isValid !== ctx.$isValid) _(isValid, ctx.$validation);
+        // if (isValid === true) {
+        //
+        // } else {
+        //     ctx.$ref && ctx.$ref.$emit("fieldValidChg", ctx.constructor.name, false,ctx.$validation);
+        //     ctx.$emit("$isValidChg", ctx.$isValid = false,ctx.validateMsg);
+        // }
     }
 }
 
@@ -123,7 +127,7 @@ export default function defineModel(cfg,watch) {
             field.idx               = idx;
             modified[fname]         = false;
             this.$fields[fname]     = field;
-            this.$validation[fname] = field.$isModel ? field.$validation : field.isValid;
+            this.$validation[fname] = field.$isModel ? field.$validation : {isValid:field.isValid,msg:field.validateMsg};
             Object.defineProperty(this, fname, {
                 set         : function (value) {
                     field.$isModel ? Object.assign(field, value) : field.value = value;
@@ -135,7 +139,7 @@ export default function defineModel(cfg,watch) {
         }
         this.$modified = modified;
         this.$on("fieldValidChg", fieldValidChgHandler(this));
-        this.$on("fieldModChg", fieldModChgHandler(this));
+        this.$on("fieldModChg"  , fieldModChgHandler(this)  );
         this.$on("fieldValueChg", (fname, value,preValue) => {
             if(watch&&watch[fname]){
                 Reflect.apply(watch[fname],this,[value,preValue]);

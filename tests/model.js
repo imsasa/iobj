@@ -56,7 +56,7 @@ describe("验证isValid", function () {
         let ins = new M({flist: [1, 2, 3]});
         return ins.$validate().then(function () {
             assert.equal(ins.$isValid, false);
-            assert.equal(ins.$validation.fname, true);
+            assert.equal(ins.$validation.fname.isValid, true);
         })
     });
     it("修改字段00", function (done) {
@@ -72,8 +72,8 @@ describe("验证isValid", function () {
         let ins = new M({flist: [1, 2, 3]});
         ins.flist.push(4);
         ins.$validate().then(function () {
-            assert.equal(ins.$validation.flist, true);
-            assert.equal(ins.$validation.fname, true);
+            assert.equal(ins.$validation.flist.isValid, true);
+            assert.equal(ins.$validation.fname.isValid, true);
             done()
         });
     });
@@ -83,8 +83,8 @@ describe("验证isValid", function () {
         ins.flist.splice(3, 1);
         ins.$validate().then(function () {
             assert.equal(ins.$isValid, false);
-            assert.equal(ins.$validation.flist, false);
-            assert.equal(ins.$validation.fname, true);
+            assert.equal(ins.$validation.flist.isValid, false);
+            assert.equal(ins.$validation.fname.isValid, true);
             done();
         });
     });
@@ -92,7 +92,7 @@ describe("验证isValid", function () {
         let ins = new M({flist: [1, 2, 3]});
         ins.flist.push(4);
         setTimeout(() => {
-            assert.equal(ins.$validation.flist, true);
+            assert.equal(ins.$validation.flist.isValid, true);
             done()
         }, 200);
 
@@ -101,7 +101,7 @@ describe("验证isValid", function () {
         let ins   = new M();
         ins.fname = "sa";
         ins.$validate().then(function () {
-            assert.equal(ins.$validation.fname, false);
+            assert.equal(ins.$validation.fname.isValid, false);
             done();
         });
 
