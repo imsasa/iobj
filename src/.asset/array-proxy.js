@@ -1,18 +1,34 @@
-let proto = Object.create(Array.prototype);
-let mthds = ["push", "pop", "shift", "unshift", "splice", "sort", "reverse"];
-
-function proxy(m, fn) {
-    return function () {
-        let pre    = [...this];
-        let result = m.apply(this, arguments);
-        fn(this, pre);
-        return result;
-    }
-}
-
 export default function (initVal = [], fn) {
-    let arr = [...initVal];
-    mthds.forEach(method => proto[method] = proxy(Array.prototype[method], fn));
-    arr.__proto__ = proto;
-    return arr;
+    const proxyCache = new WeakMap();
+
+    const handler = {
+        get(target, prop, receiver) {
+            const value = Reflect.get(target, prop, receiver);
+            if (typeof value === 'object' && value !== null) {
+                let existing = proxyCache.get(value);
+                if (existing) return existing;
+                
+                const p = new Proxy(value, handler);
+                proxyCache.set(value, p);
+                return p;
+            }
+            return value;
+        },
+        set(target, prop, value, receiver) {
+            const oldValue = target[prop];
+            const result = Reflect.set(target, prop, value, receiver);
+            if (oldValue !== value) {
+                fn();
+            }
+            return result;
+        },
+        deleteProperty(target, prop) {
+            const result = Reflect.deleteProperty(target, prop);
+            fn();
+            return result;
+        }
+    };
+
+    // Use Proxy instead of proto hack
+    return new Proxy(initVal, handler);
 }

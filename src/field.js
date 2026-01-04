@@ -1,5 +1,5 @@
 import arrayProxy from "./.asset/array-proxy.js";
-import isDiff     from "./.asset/is-diff.js";
+import isDiff, { clone } from "./.asset/is-diff.js";
 import { ValidateAdapter } from "./validate.js";
 import mitt from 'mitt';
 import instanceStateMap from "./instance-map.js";
@@ -19,12 +19,11 @@ function checkIsEmpty(value,isArray) {
   }
   return false;
 }
-let set = function (val) {
+
+// FIX: Split set and notify logic
+let notifyChange = function() {
   let ths = this;
-  // 立即同步更新 value，确保 get 能返回最新值
   const state = instanceStateMap.get(ths);
-  state.value = ths.format ? ths.format(val) : val;
-  // 微任务防抖：批量处理同一事件循环内的多次赋值
   if (state.pending) {
     return;
   }
@@ -37,7 +36,7 @@ let set = function (val) {
       const isDirty = ths.isDirty;
       const _isDirty = isDiff(state.value, ths.initVal);
       // 如果是数组，创建副本以避免引用相同导致无法检测变化
-      state._value = Array.isArray(state.value) ? [...state.value] : state.value;
+      state._value = Array.isArray(state.value) ? clone(state.value) : state.value;
       if (isDirty !== _isDirty) {
         ths.isDirty = _isDirty;
         instanceStateMap.get(ths).bus.emit('modifiedChange', _isDirty);
@@ -45,6 +44,16 @@ let set = function (val) {
       ths.validate();
     }
   });
+};
+
+let set = function (val) {
+  let ths = this;
+  // 立即同步更新 value，确保 get 能返回最新值
+  const state = instanceStateMap.get(ths);
+  
+  state.value = ths.format ? ths.format(val) : val;
+  // 微任务防抖：批量处理同一事件循环内的多次赋值
+  notifyChange.call(ths);
 }
 
 class Proto extends Base {
@@ -56,31 +65,37 @@ class Proto extends Base {
       value = typeof ths.defaultValue === "function" ? ths.defaultValue() : ths.defaultValue;
     }
     if (Array.isArray(value)) {
-      value = arrayProxy(value, set.bind(ths));
+      // FIX: pass notifyChange as callback, bound to ths
+      value = arrayProxy(value, notifyChange.bind(ths));
       ths.isArray = true;
     }
     const formatted = ths.format(value);
     // 关键修正：确保存储的是副本，不是 Proxy 引用，避免随 state.value 变化
-    this.initVal = (ths.isArray && Array.isArray(formatted)) ? [...formatted] : formatted;
+    // FIX: Deep clone initVal for arrays to support deep diff
+    this.initVal = (ths.isArray && Array.isArray(formatted)) ? clone(formatted) : formatted;
+    // Also deep clone _value
+    const _valueInit = (ths.isArray && Array.isArray(formatted)) ? clone(formatted) : formatted;
+
     instanceStateMap.set(ths, {
       bus: mitt(),
       pending: false, // 是否正在计算isDirty 和isValid·
       value: formatted,  // 当前值（格式化后）
-      _value: Array.isArray(this.initVal) ? [...this.initVal] : this.initVal, // 用于脏检查的缓存值
+      _value: _valueInit, // 用于脏检查的缓存值
     });
-    // ths.on("modifiedChange", (isDirty) => {
-    //   ths.isDirty = isDirty;
-    // });
-    // ths.on("validChange", (isValid,validation) => {
-    //   ths.validation = validation || [];
-    //   ths.isValid = isValid
-    // });
     const state = instanceStateMap.get(ths);
     Object.defineProperty(ths, "value", {set: set, get: () => state.value});
     ths.validation = [];
   }
   async validate(skipEmpty = false) {
     let isValid = this.isValid;
+    const state = instanceStateMap.get(this);
+    if(state.pending) {
+      return new Promise(resolve => {
+        queueMicrotask(() => {
+            resolve(this.validate(skipEmpty));
+        });
+      });
+    }
     if(skipEmpty && checkIsEmpty(this.value, this.isArray)) {
       return isValid;
     }
@@ -94,9 +109,12 @@ class Proto extends Base {
         _validation = [];
       })
       .catch(e=>{
+        // FIX: Handle null/undefined throw
+        if (e === null) throw e; 
+        console.log('Validation Error:', this.name, e);
         isValid = false;
         // 兼容 Zod 错误 (e.issues) 和普通 Error (转为数组)
-        const errors = e.issues || [{ message: e.message }];
+        const errors = e.issues || [{ message: e?.message || e }];
         const validation = this.validation;
         isErrorNotSame = validation?.length !== errors.length;
         if(!isErrorNotSame) {
@@ -109,6 +127,7 @@ class Proto extends Base {
         }
       });
     }
+    
     if (isValid !== this.isValid || isErrorNotSame) {
       this.validation = _validation;
       this.isValid = isValid;
@@ -122,8 +141,8 @@ class Proto extends Base {
   reset() {
     this.validation = [];
     const state = instanceStateMap.get(this);
-    state.value = this.isArray ? arrayProxy([...this.initVal], set.bind(this)) : this.initVal;
-    state._value = this.isArray ? [...this.initVal] : this.initVal;
+    state.value = this.isArray ? arrayProxy(clone(this.initVal), notifyChange.bind(this)) : this.initVal;
+    state._value = this.isArray ? clone(this.initVal) : this.initVal;
     this.isValid = undefined;
     this.isDirty = false;
     return this;
@@ -153,7 +172,12 @@ export default function defineField(name, clsOpt = {}) {
   }
 
   if (typeof validator === 'function') {
-    F.prototype.validator = { validate: async (val) => validator(val) };
+    // FIX: Handle boolean return from synchronous validator
+    F.prototype.validator = { validate: async (val) => {
+      const res = await validator(val);
+      if (res === false) throw new Error('Validation failed');
+      return res;
+    }};
   } else if(validator || rule)  {
     F.prototype.validator = new ValidateAdapter(validator, rule);
   }

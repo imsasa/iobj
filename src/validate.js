@@ -6,7 +6,9 @@ const DEFAULT_VALIDATOR = 'zod';
 const adapters = [
   {
     name: DEFAULT_VALIDATOR,
-    validate:  async (value, rule) => rule.parse(value)
+    validate:  async (value, rule) => {
+      return rule.parseAsync(value);
+    }
   }
 ];
 

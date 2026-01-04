@@ -8,6 +8,8 @@ import Base from "./base.js";
 // validation 结构：undefined(未验证) | true(通过) | [](错误数组)
 function calcIsValid(validation) {
   const values = Object.values(validation);
+  // FIX: Handle empty validation (no fields)
+  if (values.length === 0) return undefined;
   // 三态聚合：False(数组) > Undefined > True
   if (values.some(v => Array.isArray(v))) {
     return false;
@@ -62,9 +64,10 @@ function init($fields, $data = {}, ths) {
     let val       = $data[fieldName];
     let field     = new Field(val);
     field.__ref__ = ths;
-    // 契约：初始化状态对齐 (undefined = 未验证)
-    validation[fieldName] = undefined;
-    modified[fieldName]   = false;
+    // 初始化状态对齐 (undefined = 未验证)
+    // FIX: Don't overwrite or initialize if we want sparse state for partial check
+    if (validation[fieldName] === undefined) validation[fieldName] = undefined;
+    if (modified[fieldName] === undefined) modified[fieldName] = false;
     let get               = () => field.value;
     let set               = (val) => field.value = val;
     field.on('modifiedChange',(isDirty) =>{
@@ -79,10 +82,46 @@ function init($fields, $data = {}, ths) {
   return fields;
 }
 
-function validate(skipEmpty = false) {
+function validate(arg1, arg2) {
+  let skipEmpty = false;
+  let options = {};
+  
+  if (typeof arg1 === 'boolean') {
+    skipEmpty = arg1;
+    if (typeof arg2 === 'object') options = arg2;
+  } else if (typeof arg1 === 'object') {
+    options = arg1;
+    if (options.skipEmpty !== undefined) skipEmpty = options.skipEmpty;
+  }
+  
+  const force = options.force === true;
+  const fieldsToValidate = options.fields; // array of names
+
   let ths  = this, fields = Object.values(ths.fields), varr   = [];
   for (let field of fields) {
-    varr.push(field.validate(skipEmpty));
+    if (fieldsToValidate && !fieldsToValidate.includes(field.name)) {
+      continue;
+    }
+
+    // Optimization: Skip if not forced, has result, and not dirty
+    const isDirty = ths.modified[field.name];
+    const fieldState = instanceStateMap.get(field);
+    let validPromise = null;
+
+    if (fieldState.pending) {
+      validPromise = field.sync().then(() => {
+        const currentIsDirty = ths.modified[field.name];
+        // pending 结束后的二次检查逻辑...
+        if (force || currentIsDirty || field.isValid === undefined) {
+           return field.validate(skipEmpty);
+        }
+        return field.isValid;
+      });
+    }
+    else if (force || isDirty || field.isValid === undefined) {
+      validPromise = field.validate(skipEmpty);
+    }
+    validPromise && varr.push(validPromise);
   }
   return Promise.all(varr).then(() => {
     // 同步计算并更新缓存
@@ -95,14 +134,21 @@ function validate(skipEmpty = false) {
 function defineFields(fieldsCfg = {}) {
   let fields = [];
   const _defineField = (name, opts) => {
-    const f = (opts.__field__ || opts.__model__) ? opts : defineField(name || opts.name, opts);
+    const realName = name !== undefined ? name : opts.name;
+    const f = (opts.__field__ || opts.__model__) ? opts : defineField(realName, opts);
     fields.push(f);
   };
   if (Array.isArray(fieldsCfg)) {
     fieldsCfg.forEach(i => _defineField(undefined,i));
   } else {
     Object.entries(fieldsCfg).forEach(([k, cfg]) => {
-      if (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg) || cfg instanceof Date) {
+      // FIX: Check if cfg is Model class
+      let isModel = false;
+      if (typeof cfg === 'function' && cfg.prototype) {
+         if (cfg.prototype instanceof Base) isModel = true;
+      }
+      
+      if (!isModel && (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg) || cfg instanceof Date)) {
         cfg = {defaultValue: cfg};
       }
       _defineField(k, cfg);
