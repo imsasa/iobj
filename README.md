@@ -16,11 +16,6 @@ pnpm add github:imsasa/iobj
 yarn add github:imsasa/iobj
 ```
 
-#### 从 npm 安装（如果已发布到 npm）
-
-```bash
-npm i iobj
-```
 
 #### 安装依赖
 
@@ -165,7 +160,7 @@ console.log(f.validation)
 #### Model 校验
 
 ```js
-await model.validate(false) // 对所有字段执行 validate(skipEmpty)
+await model.validate() // 对所有字段执行 validate(skipEmpty)
 ```
 
 注意：当前实现的 `Model` 校验是**字段级校验的聚合**，不包含额外的“模型级跨字段规则”。

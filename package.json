@@ -1,6 +1,6 @@
 {
   "name": "iobj",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "对象修改状态和验证状态管理库",
   "type": "module",
   "engines": {
@@ -33,13 +33,13 @@
     "url": "https://github.com/imsasa/iobj.git"
   },
   "dependencies": {
-    "mitt": "^3.0.1",
-    "zod": "^3.0.0"
+    "mitt": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
     "typescript": "^5.9.2",
     "vue": "^3.5.26",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "zod": "^3.0.0"
   }
 }
