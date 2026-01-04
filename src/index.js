@@ -1,5 +1,4 @@
-import model from "./model.js";
-import field from "./field.js";
-export default model;
-export  {field,model as defineModel}
-// export model from './model';
+// 导出新的 API
+import defineField from './field.js';
+import defineModel from './model.js';
+export { defineField, defineModel };

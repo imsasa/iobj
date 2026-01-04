@@ -1,91 +1,173 @@
-import arrayProxy from "./field/array-proxy.js";
-import isDiff     from "./field/is-diff.js";
+import arrayProxy from "./.asset/array-proxy.js";
+import isDiff     from "./.asset/is-diff.js";
+import { ValidateAdapter } from "./validate.js";
+import mitt from 'mitt';
+import instanceStateMap from "./instance-map.js";
+import Base from "./base.js";
 
-function validate() {
-    let val      = this.value;
-    let ths      = this;
-    let vali     = this.validator ? this.validator(val) : true;
-    let isValid  = this.isValid;
-    this.isValid = undefined;
-    return Promise.resolve(vali).then((res) => {
-        ths.isValid = res;
-        isValid !== res && ths["onValidChange"]?.(res, ths);
-        return res;
+/**
+ * 注册验证器适配器
+ * @param name 适配器名称
+ * @param validate 验证器函数
+ */
+
+function checkIsEmpty(value,isArray) {
+  if (value === undefined || value === null || value === '') {
+    return true;
+  } else if (isArray && value.length === 0) {
+    return true;
+  }
+  return false;
+}
+let set = function (val) {
+  let ths = this;
+  // 立即同步更新 value，确保 get 能返回最新值
+  const state = instanceStateMap.get(ths);
+  state.value = ths.format ? ths.format(val) : val;
+  // 微任务防抖：批量处理同一事件循环内的多次赋值
+  if (state.pending) {
+    return;
+  }
+  state.pending = true;
+  // 捕获微任务注册时的基准值，用于后续比较
+  queueMicrotask(async () => {
+    // 先同步更新状态，确保 sync() 后能立即读取
+    state.pending = false;
+    if(isDiff(state._value, state.value)) {
+      const isDirty = ths.isDirty;
+      const _isDirty = isDiff(state.value, ths.initVal);
+      // 如果是数组，创建副本以避免引用相同导致无法检测变化
+      state._value = Array.isArray(state.value) ? [...state.value] : state.value;
+      if (isDirty !== _isDirty) {
+        ths.isDirty = _isDirty;
+        instanceStateMap.get(ths).bus.emit('modifiedChange', _isDirty);
+      }
+      ths.validate();
+    }
+  });
+}
+
+class Proto extends Base {
+  constructor(value, opts = {}) {
+    super();
+    let ths = this;
+    // 初始化实例状态
+    if (value === undefined) {
+      value = typeof ths.defaultValue === "function" ? ths.defaultValue() : ths.defaultValue;
+    }
+    if (Array.isArray(value)) {
+      value = arrayProxy(value, set.bind(ths));
+      ths.isArray = true;
+    }
+    const formatted = ths.format(value);
+    // 关键修正：确保存储的是副本，不是 Proxy 引用，避免随 state.value 变化
+    this.initVal = (ths.isArray && Array.isArray(formatted)) ? [...formatted] : formatted;
+    instanceStateMap.set(ths, {
+      bus: mitt(),
+      pending: false, // 是否正在计算isDirty 和isValid·
+      value: formatted,  // 当前值（格式化后）
+      _value: Array.isArray(this.initVal) ? [...this.initVal] : this.initVal, // 用于脏检查的缓存值
     });
-}
-
-
-export default function defineField(name, clsOpt = {}) {
-    if (typeof clsOpt === "string" || Array.isArray(clsOpt) || (clsOpt instanceof Date)) {
-        clsOpt = {
-            defaultValue: clsOpt
-        };
+    // ths.on("modifiedChange", (isDirty) => {
+    //   ths.isDirty = isDirty;
+    // });
+    // ths.on("validChange", (isValid,validation) => {
+    //   ths.validation = validation || [];
+    //   ths.isValid = isValid
+    // });
+    const state = instanceStateMap.get(ths);
+    Object.defineProperty(ths, "value", {set: set, get: () => state.value});
+    ths.validation = [];
+  }
+  async validate(skipEmpty = false) {
+    let isValid = this.isValid;
+    if(skipEmpty && checkIsEmpty(this.value, this.isArray)) {
+      return isValid;
     }
-    let {
-            defaultValue,
-            value,
-            validator,
-            parser, ...otherOpts
-        } = clsOpt;
-
-    class F {
-        constructor(value) {
-            let ths = this;
-            if (value === undefined) {
-                value = typeof ths.defaultValue === "function" ? ths.defaultValue() : ths.defaultValue;
-            }
-            const initVal = ths.parser ? ths.parser(value) : value;
-            // initVal = ths.formatter(value);
-            if (Array.isArray(initVal)) {
-                value = arrayProxy(initVal, setV);
-            }
-
-            function setV(val) {
-                value          = ths.parser ? ths.parser(val) : val;
-                // value          = ths.formatter ? ths.formatter(val) : val;
-                let isModified = ths.isModified;
-                ths.isModified = isDiff(value, initVal);
-                isModified !== ths.isModified && ths["onModifiedChange"]?.(ths.isModified, ths);
-                return ths.validate();
-            }
-
-            this.isModified = false;
-            Object.defineProperty(this, "value", {set: setV, get: () => value, enumerable: true});
-            // if (opts.validator !== undefined) {
-            //     ths.validator = opts.validator;
-            // }
-            // if (opts.formatter !== undefined) {
-            //     ths.formatter = opts.formatter;
-            // }
+    // 有验证器，默认假设通过，catch 中会改为 false
+    isValid = true;
+    let isErrorNotSame = false;
+    let _validation;
+    if (this.validator) {
+      await this.validator.validate(this.value)
+      .then(()=>{
+        _validation = [];
+      })
+      .catch(e=>{
+        isValid = false;
+        // 兼容 Zod 错误 (e.issues) 和普通 Error (转为数组)
+        const errors = e.issues || [{ message: e.message }];
+        const validation = this.validation;
+        isErrorNotSame = validation?.length !== errors.length;
+        if(!isErrorNotSame) {
+          isErrorNotSame = errors.some((err,idx)=>{
+            return err.message !== validation[idx]?.message;
+          });
         }
-
-        name         = name;
-        isField      = true;
-        validate     = validate;
-        defaultValue = defaultValue === undefined ? value : defaultValue;
-        validator    = validator;
-        parser       = parser;
+        if(isErrorNotSame) {
+          _validation = errors;
+        }
+      });
     }
-
-    Object.defineProperty(F, "name", {value: name})
-    F._name = name;
-    Object.assign(F.prototype, otherOpts);
-    return F;
+    if (isValid !== this.isValid || isErrorNotSame) {
+      this.validation = _validation;
+      this.isValid = isValid;
+      instanceStateMap.get(this).bus.emit('validChange', isValid, _validation);
+    }
+    return this.isValid;
+  }
+  format(value) {
+    return value;
+  }
+  reset() {
+    this.validation = [];
+    const state = instanceStateMap.get(this);
+    state.value = this.isArray ? arrayProxy([...this.initVal], set.bind(this)) : this.initVal;
+    state._value = this.isArray ? [...this.initVal] : this.initVal;
+    this.isValid = undefined;
+    this.isDirty = false;
+    return this;
+  }
 }
 
-export function defineFields(fieldsCfg = {}, flag) {
-    let fields = [];
-    if (flag) {
-        Object.entries(fieldsCfg).forEach(([k, v]) => fields.push(defineField(k, {defaultValue: v})));
-    } else if (Array.isArray(fieldsCfg)) {
-        fieldsCfg.forEach(i => fields.push(defineField(i.name, i)));
-    } else {
-        Object.entries(fieldsCfg).forEach(([k, cfg]) => {
-            if (typeof cfg === 'string' || Array.isArray(cfg)) {
-                cfg = {defaultValue: cfg};
-            }
-            fields.push(defineField(k, cfg));
-        });
-    }
-    return fields;
+/**
+ *
+ * @param name 字段名
+ * @param clsOpt 字段选项, clsOpt
+ * @returns 字段对象
+ */
+export default function defineField(name, clsOpt = {}) {
+  if (name && (name.__field__ || name.__model__)) return name;
+  let {
+    defaultValue,
+    value,
+    format,
+    validator,
+    rule,
+    ...otherOpts
+  } = clsOpt;
+  class F extends Proto {
+    name         = name;
+    initValue   = value;
+    __field__    = true;
+  }
+
+  if (typeof validator === 'function') {
+    F.prototype.validator = { validate: async (val) => validator(val) };
+  } else if(validator || rule)  {
+    F.prototype.validator = new ValidateAdapter(validator, rule);
+  }
+
+  if(format) {
+    F.prototype.format = format;
+  }
+
+  // FIXED: Set defaultValue on prototype to ensure it's available in Proto constructor
+  F.prototype.defaultValue = defaultValue === undefined ? value : defaultValue;
+
+  Object.defineProperty(F, "name", {value: name})
+  F._name = name;
+  F.__field__ = true;  // 静态属性，供 defineModel 识别已定义的 Field
+  Object.assign(F.prototype, otherOpts);
+  return F;
 }

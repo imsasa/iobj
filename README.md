@@ -1,95 +1,248 @@
 # iobj
-> 或许能帮到你
-## api
-https://imsasa.github.io/iobj/
 
-## 怎么用
-0. 安装  `npm install iobj`
-1. 定义一个model
-    ```javascript
-      let M = modelDefine(
-                [
-                    {
-                        name        : "fname",
-                        alias       : "姓名",
-                        defaultValue: "sasa",
-                        required    : true,
-                        validator   : function () {
-                            return this.value.length > 3;
-                        }
-                    },
-                    {
-                        name        : "fage",
-                        defaultValue: '28',
-                        validator   : function () {
-                            return this.value.length > 3;
-                        }
-                    }]
-    );
-    
-    ```
+对象/表单的**修改状态（dirty）**与**校验状态（valid）**管理库（ESM）。
 
-2. 单独使用
-    ```javascript
-            let ins = new M();
-            ins.fname= "saa";
-            ins.validate().then(()=>{
-                assert.equal(ins.$isValid, false);
-                done();
-            });
-    
-    ```
-3. 与vue一起使用
-    ```javascript
-      let foo=new M();
-      let vobj = new Vue({
-          data:foo
-      });
-      vobj.fname='saaa';
-      //foo.value.fname的值为sasa;
-    ```
+当前实现以 `Model/Field` 为核心：字段值写入后通过微任务批处理更新 `isDirty/isValid`，并通过事件同步到模型层聚合状态。
 
-## 自动响应数据变化
+### 安装
 
-```html
- <form class="ui form">
-   <label>姓名</label>：<input autocomplete="off" type="text" name="fname" v-model="person.fname">
-   <span>姓名输入{{ (validation.fname ? "正确" : "不正确") }}</span>
-   <br>
-   <label>年龄</label>：<input autocomplete="off" type="text" name="fage" v-model="person.fage">
-   <span>年龄输入{{ (validation.fage ? "正确" : "不正确") }}</span>
-   <br>
-   <span>
-            表单录入<span v-if="isValid">正确</span>
-            <span style="color:red" v-else>不正确</span>
-        </span>
-   <br>
-   <span>
-            当前表单<span style="color:red" v-if="isModified">已经修改</span>
-            <span v-else>没有任何修改</span>
-        </span>
-   <br>
-   <button type="button" :disabled="!isValid">提交</button>
-</form>
+#### 从 GitHub 安装
 
+```bash
+npm install github:imsasa/iobj
+# 或使用 pnpm
+pnpm add github:imsasa/iobj
+# 或使用 yarn
+yarn add github:imsasa/iobj
 ```
-  ```javascript
-//demo/index.html
-new Vue({
-   el  : '#app',
-   data: function () {
-      let person = new P();
-      person.$watch('$isValid', (val) => this.isValid = val);
-      person.$watch('$isModified', (val) => this.isModified = val);
-      return {
-         person    : person,
-         isValid   : person.$isValid,
-         isModified: person.$isModified,
-         validation: person.$validation
-      }
-   }
-});
-   ```
 
+#### 从 npm 安装（如果已发布到 npm）
 
+```bash
+npm i iobj
+```
+
+#### 安装依赖
+
+如需使用默认校验适配器（Zod）：
+
+```bash
+npm i zod
+```
+
+### 快速开始（Model）
+
+```js
+import defineModel from 'iobj/src/model.js'
+import { z } from 'zod'
+
+const User = defineModel({
+  name: { defaultValue: '', rule: z.string().min(2, '至少 2 个字符') },
+  email: { defaultValue: '', rule: z.string().email('邮箱格式不正确') },
+  age: { defaultValue: 0 },
+})
+
+const u = new User({ name: 'Li' })
+
+u.value.name = 'A'              // 写入会触发微任务：dirty 计算 + validate()
+await u.sync()                  // 等待微任务执行完，确保状态已刷新
+
+console.log(u.isDirty)          // true/false
+console.log(u.modified.name)    // true/false
+
+await u.validate(true)          // skipEmpty=true：空值跳过校验（保持当前 isValid）
+console.log(u.isValid)          // undefined | true | false
+console.log(u.validation.name)  // undefined | true | [ { message: string }, ... ]
+```
+
+### 定义 Field（defineField）
+
+`defineField(name, opts)` 返回一个可实例化的 Field 类（构造参数为初始值）。
+
+```js
+import defineField from 'iobj/src/field.js'
+import { z } from 'zod'
+
+const Email = defineField('email', {
+  defaultValue: '',
+  format: (v) => String(v ?? '').trim(),
+  rule: z.string().email('邮箱格式不正确'), // 未指定 validator 时默认使用 zod 适配器
+})
+
+const f = new Email('  a@b.com  ')
+await f.sync?.()
+await f.validate()
+console.log(f.value)       // 'a@b.com'
+console.log(f.isDirty)     // true/false
+console.log(f.isValid)     // undefined | true | false
+console.log(f.validation)  // [] | [ { message }, ... ]
+```
+
+`opts` 配置：
+
+- `defaultValue`: 未传入构造参数时的默认值（支持函数）
+- `format(value)`: 初始化/写入时格式化（例如 trim、toUpperCase 等）
+- `validator`:
+  - 传函数：`async (val) => true` 或 `throw new Error(message)`（失败必须 throw）
+  - 传字符串：校验适配器名（默认 `zod`）
+- `rule`: 规则对象，交给适配器执行（例如 Zod schema）
+- 其他字段：会 `Object.assign` 到字段实例上（可用于扩展元信息）
+
+### 定义 Model（defineModel）
+
+`defineModel([name], fields)` 返回一个可实例化的 Model 类（构造参数为初始数据）。
+
+```js
+import defineModel from 'iobj/src/model.js'
+import defineField from '@ilearn/iobj/src/field.js'
+import { z } from 'zod'
+
+const Age = defineField('age', { defaultValue: 0, rule: z.number().min(0, '年龄不能为负') })
+
+const User = defineModel('User', {
+  name: { defaultValue: '', rule: z.string().min(2, '至少 2 个字符') },
+  email: { defaultValue: '', rule: z.string().email('邮箱格式不正确') },
+  age: Age,          // 也可以直接复用已定义的 Field 类
+  enabled: true,     // 原始值简写：等价于 { defaultValue: true }
+})
+
+const u = new User({ name: 'Li' }) // 传入的初始值会作为各字段 initVal 基线
+```
+
+`fields` 支持两种形态：
+
+- 对象：`{ [fieldName]: fieldCfg }`
+  - `fieldCfg` 可以是 Field 配置对象、已定义的 Field 类、或原始值简写（转为 `{ defaultValue: xxx }`）
+- 数组：`[fieldCfg, ...]`
+  - `fieldCfg` 可以是已定义的 Field 类
+  - 或包含 `name` 的配置对象：`{ name: 'x', defaultValue: 1, ... }`
+
+### 概念与状态结构
+
+- **Field（字段实例）**
+  - `field.value`: 当前值（写入会触发微任务批处理）
+  - `field.initVal`: 初始化值（构造时格式化后的基线）
+  - `field.isDirty`: 是否相对 `initVal` 发生变化
+  - `field.isValid`: `undefined | true | false`
+  - `field.validation`: 验证错误结果数组（失败时写入；通过时清空 `[]`）
+
+- **Model（模型实例）**
+  - `model.value`: 纯数据对象（每个 key 都代理到对应 Field）
+  - `model.fields`: 字段实例映射（`{ [name]: FieldInstance }`）
+  - `model.modified`: 字段 dirty 映射（`{ [name]: boolean }`）
+  - `model.validation`: 字段 valid 映射（`{ [name]: undefined | true | Error[] }`）
+  - `model.isDirty`: `modified` 的聚合（任一字段为 `true` 则为 `true`）
+  - `model.isValid`: 三态聚合
+    - 任一字段为错误数组（失败）→ `false`
+    - 否则任一字段为 `undefined`（未验证）→ `undefined`
+    - 否则 → `true`
+
+### 校验（Field / Model）
+
+#### Field 校验
+
+```js
+import defineField from '../src/field.js'
+import { z } from 'zod'
+
+const Email = defineField('email', {
+  defaultValue: '',
+  rule: z.string().email('邮箱格式不正确'),
+})
+
+const f = new Email()
+await f.validate()      // -> true/false/undefined
+console.log(f.validation)
+```
+
+字段配置项（`defineField(name, opts)`）核心字段：
+
+- `defaultValue`: 未传入构造参数时的默认值（支持函数）
+- `format(val)`: 写入/初始化时格式化（例如 trim、toUpperCase 等）
+- `validator`: 自定义校验函数（`async (val) => true` 或 `throw new Error(message)`）
+- `rule`: 规则对象（默认用 Zod `parseAsync`，失败时走 `e.errors`/`e.message` 解析）
+
+#### Model 校验
+
+```js
+await model.validate(false) // 对所有字段执行 validate(skipEmpty)
+```
+
+注意：当前实现的 `Model` 校验是**字段级校验的聚合**，不包含额外的“模型级跨字段规则”。
+
+### sync：等待微任务刷新
+
+字段赋值/数组变异会把 dirty 计算与 validate 合并到同一个微任务中批处理；如果你在赋值后立刻读取 `isDirty/isValid`，应 `await instance.sync()`：
+
+```js
+model.value.name = 'next'
+await model.sync()
+console.log(model.isDirty, model.isValid)
+```
+
+### reset：回到初始化基线
+
+```js
+model.reset()
+// - 每个字段回到其 initVal（即实例化时的初始值）
+// - model.modified[*] 清为 false
+// - model.validation[*] 清为 undefined
+// - model.isDirty=false, model.isValid=undefined
+```
+
+### 数组字段
+
+当字段值为数组时，会代理 `push/pop/shift/unshift/splice/sort/reverse` 等变异方法，
+变异后同样走微任务批处理（建议 `await sync()` 后读取聚合状态）。
+
+### 事件（on/off）
+
+`Field` 与 `Model` 都继承 `Base`，提供事件订阅：
+
+```js
+const off = model.on('modifiedChange', (isDirty) => {
+  console.log('model dirty =>', isDirty)
+})
+
+// Field 事件回调参数为对象：{ value, field }
+const off2 = model.fields.name.on('validChange', ({ value, field }) => {
+  console.log(field.name, 'valid =>', value)
+})
+
+off()
+off2()
+```
+
+已使用的事件名：
+
+- `modifiedChange`
+  - Field：`{ value: boolean, field }`
+  - Model：`boolean`
+- `validChange`
+  - Field：`{ value: (undefined|true|false), field }`
+  - Model：`(undefined|true|false)`
+
+### 自定义校验适配器（非 Zod）
+
+默认适配器名为 `zod`，其行为等价于 `rule.parseAsync(value)`。
+你可以注册新的适配器，并通过 `validator` 传入适配器名 + `rule` 传入规则对象：
+
+```js
+import { registerValidateAdapter } from '../src/validate.js'
+import defineField from '../src/field.js'
+
+registerValidateAdapter('my', async (value, rule) => {
+  return rule(value) // 失败请 throw
+})
+
+const F = defineField('x', { validator: 'my', rule: (v) => { if (!v) throw new Error('必填') } })
+```
+
+### 导出说明
+
+源码中核心模块位于：
+
+- `src/model.js`: `defineModel`（default export）、`Model`（named export）
+- `src/field.js`: `defineField`（default export）
+- `src/validate.js`: `registerValidateAdapter`、`ValidateAdapter`
 
