@@ -7,3 +7,4 @@ src/assets/imgs/
 dist/output/
 /dist-tests/
 /.nyc_output/
+.git/
