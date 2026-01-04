@@ -1,6 +1,6 @@
 # iobj
 
-对象/表单的**修改状态(dirty)**与**校验状态(valid)**管理库（ESM）。
+对象/表单的修改状态(dirty)与校验状态(valid)管理库（ESM）。
 
 当前实现以 `Model/Field` 为核心：字段值写入后通过微任务批处理更新 `isDirty/isValid`，并通过事件同步到模型层聚合状态。
 
@@ -233,11 +233,4 @@ registerValidateAdapter('my', async (value, rule) => {
 const F = defineField('x', { validator: 'my', rule: (v) => { if (!v) throw new Error('必填') } })
 ```
 
-### 导出说明
-
-源码中核心模块位于：
-
-- `src/model.js`: `defineModel`（default export）、`Model`（named export）
-- `src/field.js`: `defineField`（default export）
-- `src/validate.js`: `registerValidateAdapter`、`ValidateAdapter`
 
