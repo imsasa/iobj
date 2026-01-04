@@ -1,6 +1,6 @@
 # iobj
 
-对象/表单的**修改状态（dirty）**与**校验状态（valid）**管理库（ESM）。
+对象/表单的**修改状态(dirty)**与**校验状态(valid)**管理库（ESM）。
 
 当前实现以 `Model/Field` 为核心：字段值写入后通过微任务批处理更新 `isDirty/isValid`，并通过事件同步到模型层聚合状态。
 
@@ -33,7 +33,7 @@ npm i zod
 ### 快速开始（Model）
 
 ```js
-import defineModel from 'iobj/src/model.js'
+import defineModel from 'iobj/model'
 import { z } from 'zod'
 
 const User = defineModel({
@@ -60,7 +60,7 @@ console.log(u.validation.name)  // undefined | true | [ { message: string }, ...
 `defineField(name, opts)` 返回一个可实例化的 Field 类（构造参数为初始值）。
 
 ```js
-import defineField from 'iobj/src/field.js'
+import defineField from 'iobj/field.js'
 import { z } from 'zod'
 
 const Email = defineField('email', {
@@ -142,7 +142,7 @@ const u = new User({ name: 'Li' }) // 传入的初始值会作为各字段 initV
 #### Field 校验
 
 ```js
-import defineField from '../src/field.js'
+import defineField from '../field.js'
 import { z } from 'zod'
 
 const Email = defineField('email', {
@@ -228,7 +228,7 @@ off2()
 你可以注册新的适配器，并通过 `validator` 传入适配器名 + `rule` 传入规则对象：
 
 ```js
-import { registerValidateAdapter } from '../src/validate.js'
+import { registerValidateAdapter } from '../validate.js'
 import defineField from '../src/field.js'
 
 registerValidateAdapter('my', async (value, rule) => {
