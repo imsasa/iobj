@@ -83,6 +83,11 @@ console.log(f.validation)  // [] | [ { message }, ... ]
 - `rule`: 规则对象，交给适配器执行（例如 Zod schema）
 - 其他字段：会 `Object.assign` 到字段实例上（可用于扩展元信息）
 
+### vue
+https://ichunge.github.io/iobj/index.html
+
+https://github.com/ichunge/iobj/blob/master/demo/vue3-demo/src/index.vue
+
 ### 定义 Model（defineModel）
 
 `defineModel([name], fields)` 返回一个可实例化的 Model 类（构造参数为初始数据）。
