@@ -32,17 +32,18 @@ let notifyChange = function() {
   queueMicrotask(async () => {
     // 先同步更新状态，确保 sync() 后能立即读取
     state.pending = false;
-    if(isDiff(state._value, state.value)) {
-      const isDirty = ths.isDirty;
-      const _isDirty = isDiff(state.value, ths.initVal);
-      // 如果是数组，创建副本以避免引用相同导致无法检测变化
-      state._value = Array.isArray(state.value) ? clone(state.value) : state.value;
-      if (isDirty !== _isDirty) {
-        ths.isDirty = _isDirty;
-        instanceStateMap.get(ths).bus.emit('modifiedChange', _isDirty);
-      }
-      ths.validate();
+    if(!isDiff(state._value, state.value)) {
+      return;
     }
+    const isDirty = ths.isDirty;
+    const _isDirty = isDiff(state.value, ths.initVal);
+    // 如果是数组，创建副本以避免引用相同导致无法检测变化
+    state._value = Array.isArray(state.value) ? clone(state.value) : state.value;
+    if (isDirty !== _isDirty) {
+      ths.isDirty = _isDirty;
+      instanceStateMap.get(ths).bus.emit('modifiedChange', _isDirty);
+    }
+    ths.validate();
   });
 };
 
@@ -50,7 +51,6 @@ let set = function (val) {
   let ths = this;
   // 立即同步更新 value，确保 get 能返回最新值
   const state = instanceStateMap.get(ths);
-  
   state.value = ths.format ? ths.format(val) : val;
   // 微任务防抖：批量处理同一事件循环内的多次赋值
   notifyChange.call(ths);
@@ -91,12 +91,11 @@ class Proto extends Base {
     const state = instanceStateMap.get(this);
     if(state.pending) {
       return new Promise(resolve => {
-        queueMicrotask(() => {
-            resolve(this.validate(skipEmpty));
-        });
+        this.once('validChangeEnd', (isValid) => resolve(isValid));
       });
     }
     if(skipEmpty && checkIsEmpty(this.value, this.isArray)) {
+      instanceStateMap.get(this).bus.emit('validChangeEnd', isValid);
       return isValid;
     }
     // 有验证器，默认假设通过，catch 中会改为 false
@@ -131,8 +130,9 @@ class Proto extends Base {
     if (isValid !== this.isValid || isErrorNotSame) {
       this.validation = _validation;
       this.isValid = isValid;
-      instanceStateMap.get(this).bus.emit('validChange', isValid, _validation);
+      instanceStateMap.get(this).bus.emit('validChange', isValid);
     }
+    instanceStateMap.get(this).bus.emit('validChangeEnd', isValid);
     return this.isValid;
   }
   format(value) {

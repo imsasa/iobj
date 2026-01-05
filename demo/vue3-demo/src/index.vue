@@ -6,12 +6,14 @@ import { defineModel } from 'iobj'
 const nameRule = z.string().min(2, '姓名至少 2 个字符')
 const emailRule = z.string().email('请输入有效邮箱').refine(v => v.endsWith('@gmail.com'), '必须是 Gmail 邮箱')
 const ageRule = z.number({ invalid_type_error: '请输入数字' }).int('必须是整数').positive('必须是正整数')
+const tagsRule = z.array(z.string().min(1, '标签不能为空')).min(1, '至少添加 1 个标签')
 
 // 定义 Model
 export const UserModel = defineModel('User', {
   name: { defaultValue: '', rule: nameRule },
   email: { defaultValue: '', rule: emailRule },
-  age: { defaultValue: null, rule: ageRule, format: v => v === '' ? null : Number(v) }
+  age: { defaultValue: null, rule: ageRule, format: v => v === '' ? null : Number(v) },
+  tags: { defaultValue: ['vue'], rule: tagsRule }
 })
 </script>
 
@@ -25,6 +27,10 @@ const user = reactive(_user);
 console.log(user.isDirty);
 // 响应式状态
 const formData = reactive(user.value)
+
+// 标签操作
+const addTag = () => formData.tags.push('')
+const removeTag = (index) => formData.tags.splice(index, 1)
 
 // 获取字段错误信息
 const getErrors = (v) => {
@@ -91,6 +97,18 @@ const statusClass = computed(() => {
         <input v-model="formData.age" type="number" placeholder="正整数" />
         <div class="errors" v-if="validation.age">
           <span>{{ getErrors(validation.age) }}</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>标签</label>
+        <div v-for="(tag, index) in formData.tags" :key="index" class="tag-row">
+          <input v-model="formData.tags[index]" placeholder="标签名称" />
+          <button type="button" class="btn-sm btn-remove" @click="removeTag(index)">×</button>
+        </div>
+        <button type="button" class="btn-sm" @click="addTag">+ 添加标签</button>
+        <div class="errors" v-if="validation.tags">
+           <span>{{ getErrors(validation.tags) }}</span>
         </div>
       </div>
 
@@ -168,6 +186,21 @@ button:hover {
 }
 .btn-reset:hover {
   background: #4b5563;
+}
+.tag-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+.btn-remove {
+  background: #ef4444;
+}
+.btn-remove:hover {
+  background: #dc2626;
 }
 .debug {
   margin-top: 2rem;

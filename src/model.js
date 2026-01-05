@@ -65,7 +65,6 @@ function init($fields, $data = {}, ths) {
     let field     = new Field(val);
     field.__ref__ = ths;
     // 初始化状态对齐 (undefined = 未验证)
-    // FIX: Don't overwrite or initialize if we want sparse state for partial check
     if (validation[fieldName] === undefined) validation[fieldName] = undefined;
     if (modified[fieldName] === undefined) modified[fieldName] = false;
     let get               = () => field.value;
@@ -85,7 +84,7 @@ function init($fields, $data = {}, ths) {
 function validate(arg1, arg2) {
   let skipEmpty = false;
   let options = {};
-  
+
   if (typeof arg1 === 'boolean') {
     skipEmpty = arg1;
     if (typeof arg2 === 'object') options = arg2;
@@ -93,40 +92,28 @@ function validate(arg1, arg2) {
     options = arg1;
     if (options.skipEmpty !== undefined) skipEmpty = options.skipEmpty;
   }
-  
+
   const force = options.force === true;
-  const fieldsToValidate = options.fields; // array of names
 
   let ths  = this, fields = Object.values(ths.fields), varr   = [];
   for (let field of fields) {
-    if (fieldsToValidate && !fieldsToValidate.includes(field.name)) {
-      continue;
-    }
-
-    // Optimization: Skip if not forced, has result, and not dirty
-    const isDirty = ths.modified[field.name];
-    const fieldState = instanceStateMap.get(field);
     let validPromise = null;
-
-    if (fieldState.pending) {
-      validPromise = field.sync().then(() => {
-        const currentIsDirty = ths.modified[field.name];
-        // pending 结束后的二次检查逻辑...
-        if (force || currentIsDirty || field.isValid === undefined) {
-           return field.validate(skipEmpty);
-        }
-        return field.isValid;
-      });
-    }
-    else if (force || isDirty || field.isValid === undefined) {
+    const fieldState = instanceStateMap.get(field);
+    // Optimization: Skip if not forced, has result, and not dirty
+    // 如果字段正在pending，也需要等待其结果，以保证 Model.validate 能等到所有字段最终状态
+    if (force || field.isValid === undefined || fieldState.pending) {
       validPromise = field.validate(skipEmpty);
     }
+    
     validPromise && varr.push(validPromise);
   }
   return Promise.all(varr).then(() => {
     // 同步计算并更新缓存
     const isValid = calcIsValid(ths.validation);
-    ths.isValid = isValid;
+    if(isValid!==ths.isValid){
+      ths.isValid = isValid;
+      instanceStateMap.get(ths).bus.emit('validChange', isValid);
+    }
     return isValid;
   });
 }
@@ -147,7 +134,7 @@ function defineFields(fieldsCfg = {}) {
       if (typeof cfg === 'function' && cfg.prototype) {
          if (cfg.prototype instanceof Base) isModel = true;
       }
-      
+
       if (!isModel && (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg) || cfg instanceof Date)) {
         cfg = {defaultValue: cfg};
       }

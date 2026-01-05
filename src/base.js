@@ -15,6 +15,13 @@ export default class Base {
       ths.bus.on(event, listener);
       return () => ths.bus.off(event, listener);
     }
+    once(event, listener) {
+      const off = this.on(event, (...args) => {
+        listener(...args);
+        off();
+      });
+      return off;
+    }
     reset() {
       const fields = this.fields;
       Object.values(fields).forEach(field => field.reset());
