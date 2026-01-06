@@ -9,11 +9,11 @@
 #### 从 GitHub 安装
 
 ```bash
-npm install github:imsasa/iobj
+npm install github:ichunge/iobj
 # 或使用 pnpm
-pnpm add github:imsasa/iobj
+pnpm add github:ichunge/iobj
 # 或使用 yarn
-yarn add github:imsasa/iobj
+yarn add github:ichunge/iobj
 ```
 
 
